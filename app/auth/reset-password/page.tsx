@@ -5,8 +5,6 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Lock, Loader2, Check, X } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 
@@ -19,7 +17,6 @@ export default function ResetPasswordPage() {
   const [isSubmitted, setIsSubmitted] = useState(false);
   const { resetPassword } = useAuth();
 
-  // Get token from URL params client-side to avoid Suspense issues
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const tokenFromUrl = params.get('token');
@@ -65,122 +62,119 @@ export default function ResetPasswordPage() {
     setIsLoading(false);
   };
 
+  const sharedStyles = `
+    @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap');
+    .rp-root * { font-family: 'Poppins', sans-serif; }
+    .rp-input-wrap { position: relative; }
+    .rp-input-wrap svg { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); width: 16px; height: 16px; color: var(--muted-foreground); pointer-events: none; }
+    .rp-input-wrap input { padding-left: 38px; border-radius: 0 !important; font-family: 'Poppins', sans-serif; font-size: 14px; }
+    .rp-btn { border-radius: 0 !important; font-family: 'Poppins', sans-serif; font-weight: 600; font-size: 14px; letter-spacing: 0.01em; height: 44px; width: 100%; }
+    .rp-card { border-radius: 0 !important; border: 1px solid hsl(var(--border) / 0.6); }
+    .rp-label { font-size: 13px; font-weight: 600; letter-spacing: 0.01em; margin-bottom: 6px; display: block; }
+    .rp-heading { font-size: 22px; font-weight: 700; margin: 0 0 4px; }
+    .rp-subheading { font-size: 13px; color: hsl(var(--muted-foreground)); margin: 0 0 20px; font-weight: 400; }
+    .rp-tagline { font-size: 12px; color: hsl(var(--muted-foreground)); font-weight: 500; letter-spacing: 0.04em; text-transform: uppercase; margin-top: 4px; }
+    .rp-link { font-size: 13px; color: hsl(var(--primary)); font-weight: 500; text-decoration: none; }
+    .rp-link:hover { text-decoration: underline; }
+    .rp-strength-row { display: flex; align-items: center; gap: 8px; font-size: 12px; margin-bottom: 6px; }
+    .rp-strength-row:last-child { margin-bottom: 0; }
+  `;
+
   if (isSubmitted) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-background px-4">
-        <div className="w-full max-w-md space-y-6 animate-fade-in">
-          <div className="text-center space-y-3">
-            <img src="/rotapay-logo.png" alt="RotaPay" className="h-16 w-auto mx-auto" />
-            <p className="text-muted-foreground text-sm">Professional Workforce Management</p>
+      <>
+        <style>{sharedStyles}</style>
+        <div className="rp-root min-h-screen flex items-center justify-center bg-background px-4">
+          <div className="w-full max-w-md animate-fade-in" style={{ paddingTop: '32px', paddingBottom: '32px' }}>
+            <div style={{ textAlign: 'center', marginBottom: '28px' }}>
+              <img src="/rotapay-logo.png" alt="RotaPay" style={{ height: '52px', width: 'auto', margin: '0 auto 6px' }} />
+              <p className="rp-tagline">Professional Workforce Management</p>
+            </div>
+            <div className="rp-card bg-card" style={{ padding: '40px 28px 32px', textAlign: 'center' }}>
+              <div style={{ width: '52px', height: '52px', borderRadius: '50%', background: 'hsl(var(--success) / 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px' }}>
+                <Check style={{ width: '24px', height: '24px', color: 'hsl(var(--success))' }} />
+              </div>
+              <h2 style={{ fontSize: '20px', fontWeight: 700, margin: '0 0 8px' }}>Password Reset Successful</h2>
+              <p style={{ fontSize: '13px', color: 'hsl(var(--muted-foreground))', margin: '0 0 4px' }}>Your password has been reset successfully.</p>
+              <p style={{ fontSize: '12px', color: 'hsl(var(--muted-foreground))', margin: 0 }}>Redirecting to login page...</p>
+            </div>
           </div>
-
-          <Card className="border-border/50 shadow-lg">
-            <CardContent className="pt-12 pb-8 text-center space-y-4">
-              <div className="mx-auto w-12 h-12 bg-success/10 rounded-full flex items-center justify-center">
-                <Check className="h-6 w-6 text-success" />
-              </div>
-              <div className="space-y-2">
-                <h2 className="text-2xl font-bold">Password Reset Successful</h2>
-                <p className="text-muted-foreground">Your password has been reset successfully.</p>
-              </div>
-              <p className="text-sm text-muted-foreground">Redirecting to login page...</p>
-            </CardContent>
-          </Card>
         </div>
-      </div>
+      </>
     );
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-background px-4">
-      <div className="w-full max-w-md space-y-6 animate-fade-in">
-        {/* RotaPay Header */}
-        <div className="text-center space-y-3">
-          <img src="/rotapay-logo.png" alt="RotaPay" className="h-16 w-auto mx-auto" />
-          <p className="text-muted-foreground text-sm">Professional Workforce Management</p>
-        </div>
+    <>
+      <style>{sharedStyles}</style>
 
-        {/* Reset Password Card */}
-        <Card className="border-border/50 shadow-lg">
-          <CardHeader className="space-y-1">
-            <CardTitle className="text-2xl">Reset Password</CardTitle>
-            <CardDescription>Enter your new password</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            {/* Password Input */}
-            <div className="space-y-2">
-              <Label htmlFor="password" className="font-semibold">
-                New Password
-              </Label>
-              <div className="relative">
-                <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+      <div className="rp-root min-h-screen flex items-center justify-center bg-background px-4">
+        <div className="w-full max-w-md animate-fade-in" style={{ paddingTop: '32px', paddingBottom: '32px' }}>
+
+          {/* Header */}
+          <div style={{ textAlign: 'center', marginBottom: '28px' }}>
+            <img src="/rotapay-logo.png" alt="RotaPay" style={{ height: '52px', width: 'auto', margin: '0 auto 6px' }} />
+            <p className="rp-tagline">Professional Workforce Management</p>
+          </div>
+
+          {/* Card */}
+          <div className="rp-card bg-card" style={{ padding: '28px 28px 24px' }}>
+            <h1 className="rp-heading">Reset Password</h1>
+            <p className="rp-subheading">Enter your new password</p>
+
+            {/* New Password */}
+            <div style={{ marginBottom: '16px' }}>
+              <label htmlFor="password" className="rp-label">New Password</label>
+              <div className="rp-input-wrap">
+                <Lock aria-hidden="true" />
                 <Input
                   id="password"
                   type="password"
                   placeholder="••••••••"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="pl-10"
                   disabled={isLoading}
                 />
               </div>
             </div>
 
-            {/* Password Strength Indicator */}
+            {/* Password Strength */}
             {password && (
-              <div className="space-y-2 p-3 bg-muted-bg rounded-lg">
-                <p className="text-xs font-semibold text-muted-foreground">Password strength:</p>
-                <div className="space-y-2">
-                  <div className="flex items-center gap-2 text-xs">
-                    {passwordStrength.hasLength ? (
-                      <Check className="h-3 w-3 text-success" />
-                    ) : (
-                      <X className="h-3 w-3 text-muted-foreground" />
-                    )}
-                    At least 8 characters
-                  </div>
-                  <div className="flex items-center gap-2 text-xs">
-                    {passwordStrength.hasUpper ? (
-                      <Check className="h-3 w-3 text-success" />
-                    ) : (
-                      <X className="h-3 w-3 text-muted-foreground" />
-                    )}
-                    One uppercase letter
-                  </div>
-                  <div className="flex items-center gap-2 text-xs">
-                    {passwordStrength.hasLower ? (
-                      <Check className="h-3 w-3 text-success" />
-                    ) : (
-                      <X className="h-3 w-3 text-muted-foreground" />
-                    )}
-                    One lowercase letter
-                  </div>
-                  <div className="flex items-center gap-2 text-xs">
-                    {passwordStrength.hasNumber ? (
-                      <Check className="h-3 w-3 text-success" />
-                    ) : (
-                      <X className="h-3 w-3 text-muted-foreground" />
-                    )}
-                    One number
-                  </div>
-                </div>
+              <div style={{ background: 'hsl(var(--muted) / 0.4)', padding: '12px 14px', marginBottom: '16px', borderLeft: '3px solid hsl(var(--primary))' }}>
+                <p style={{ fontSize: '11px', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'hsl(var(--muted-foreground))', margin: '0 0 10px' }}>
+                  Password strength
+                </p>
+                {[
+                  { key: 'hasLength', label: 'At least 8 characters' },
+                  { key: 'hasUpper', label: 'One uppercase letter' },
+                  { key: 'hasLower', label: 'One lowercase letter' },
+                  { key: 'hasNumber', label: 'One number' },
+                ].map(({ key, label }) => {
+                  const passed = passwordStrength[key as keyof typeof passwordStrength];
+                  return (
+                    <div key={key} className="rp-strength-row">
+                      {passed
+                        ? <Check style={{ width: '13px', height: '13px', color: 'hsl(var(--success))', flexShrink: 0 }} />
+                        : <X style={{ width: '13px', height: '13px', color: 'hsl(var(--muted-foreground))', flexShrink: 0 }} />
+                      }
+                      <span style={{ color: passed ? 'hsl(var(--foreground))' : 'hsl(var(--muted-foreground))' }}>{label}</span>
+                    </div>
+                  );
+                })}
               </div>
             )}
 
-            {/* Confirm Password Input */}
-            <div className="space-y-2">
-              <Label htmlFor="confirmPassword" className="font-semibold">
-                Confirm Password
-              </Label>
-              <div className="relative">
-                <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+            {/* Confirm Password */}
+            <div style={{ marginBottom: '24px' }}>
+              <label htmlFor="confirmPassword" className="rp-label">Confirm Password</label>
+              <div className="rp-input-wrap">
+                <Lock aria-hidden="true" />
                 <Input
                   id="confirmPassword"
                   type="password"
                   placeholder="••••••••"
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
-                  className="pl-10"
                   disabled={isLoading}
                 />
               </div>
@@ -190,19 +184,21 @@ export default function ResetPasswordPage() {
             <Button
               onClick={handleSubmit}
               disabled={isLoading || !password || !confirmPassword || !isStrong}
-              className="w-full bg-gradient-to-r from-primary to-accent hover:from-primary hover:to-accent font-semibold h-11 mt-2"
+              className="rp-btn bg-gradient-to-r from-primary to-accent hover:from-primary hover:to-accent"
+              style={{ marginBottom: '20px' }}
             >
               {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               {isLoading ? 'Resetting...' : 'Reset Password'}
             </Button>
 
-            {/* Link to Sign In */}
-            <Link href="/auth/login" className="block text-center text-sm text-primary hover:underline mt-4">
-              Back to sign in
-            </Link>
-          </CardContent>
-        </Card>
+            {/* Back link */}
+            <div style={{ borderTop: '1px solid hsl(var(--border) / 0.5)', paddingTop: '16px', textAlign: 'center' }}>
+              <Link href="/auth/login" className="rp-link">Back to sign in</Link>
+            </div>
+          </div>
+
+        </div>
       </div>
-    </div>
+    </>
   );
 }
