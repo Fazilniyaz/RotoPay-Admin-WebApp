@@ -93,56 +93,27 @@ export function DesktopSidebar() {
         .rp-logo-mark {
           display: flex;
           align-items: center;
-          gap: 10px;
           text-decoration: none;
           overflow: hidden;
         }
 
-        .rp-logo-icon {
-          width: 36px;
-          height: 36px;
-          border-radius: 10px;
-          background: linear-gradient(135deg, #005ea3 0%, #006d30 100%);
+        .rp-logo-image-container {
+          height: 40px;
+          overflow: hidden;
           display: flex;
           align-items: center;
-          justify-content: center;
+          width: 100%;
+        }
+
+        .rp-logo-image {
+          height: 40px;
+          width: auto;
           flex-shrink: 0;
-          box-shadow: 0 2px 8px rgba(0, 94, 163, 0.35);
+          transition: filter 0.3s ease;
         }
 
-        .rp-logo-text {
-          overflow: hidden;
-          transition: width 0.3s, opacity 0.3s;
-        }
-
-        .rp-logo-text h1 {
-          font-family: 'Montserrat', sans-serif;
-          font-size: 22px;
-          font-weight: 800;
-          color: #005ea3;
-          letter-spacing: -0.02em;
-          margin: 0;
-          line-height: 1;
-          white-space: nowrap;
-        }
-
-        .dark .rp-logo-text h1 {
-          color: #a0c9ff;
-        }
-
-        .rp-logo-text p {
-          font-family: 'Montserrat', sans-serif;
-          font-size: 9px;
-          font-weight: 700;
-          letter-spacing: 0.12em;
-          text-transform: uppercase;
-          color: #006d30;
-          margin: 2px 0 0;
-          white-space: nowrap;
-        }
-
-        .dark .rp-logo-text p {
-          color: #49e177;
+        .dark .rp-logo-image {
+          filter: brightness(0) invert(1);
         }
 
         .rp-collapse-btn {
@@ -374,11 +345,8 @@ export function DesktopSidebar() {
         {/* Logo */}
         <div className="rp-sidebar-logo">
           <Link href="/dashboard" className="rp-logo-mark">
-            <div className="rp-logo-icon">
-              <Zap size={18} color="white" strokeWidth={2.5} />
-            </div>
-            <div className="rp-logo-text">
-              <img src="/rotapay-logo.png" alt="RotaPay" style={{ height: '32px', width: 'auto', objectFit: 'contain', filter: 'brightness(0) invert(0)' }} className="dark:brightness-0 dark:invert" />
+            <div className="rp-logo-image-container">
+              <img src="/rotapay-logo.png" alt="RotaPay" className="rp-logo-image" />
             </div>
           </Link>
           <button
