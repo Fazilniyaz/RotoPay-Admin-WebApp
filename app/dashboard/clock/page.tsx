@@ -92,7 +92,7 @@ export default function ClockPage() {
           <div className="lg:col-span-7 space-y-6">
 
             {/* Main Clock Card */}
-            <div className="bg-white rounded-xl border border-gray-200/80 p-10 flex flex-col items-center text-center"
+            <div className="bg-white dark:bg-[#1f2937] rounded-xl border border-gray-200 dark:border-gray-700/80 dark:border-gray-700/80 p-10 flex flex-col items-center text-center"
               style={{ boxShadow: '0 4px 6px -1px rgba(0,94,163,0.08)' }}>
               {/* Live Time */}
               <div className="font-mono text-[64px] leading-tight font-medium text-[#005ea3] tracking-tighter mb-1">
@@ -105,14 +105,14 @@ export default function ClockPage() {
               {/* Employer Select */}
               <div className="w-full max-w-md space-y-5">
                 <div className="relative">
-                  <label className="absolute -top-2.5 left-4 bg-white px-1 text-[10px] font-bold uppercase tracking-widest text-gray-400 z-10">
+                  <label className="absolute -top-2.5 left-4 bg-white dark:bg-[#1f2937] px-1 text-[10px] font-bold uppercase tracking-widest text-gray-400 z-10">
                     Employer
                   </label>
                   <select
                     value={selectedEmployer}
                     onChange={(e) => setSelectedEmployer(e.target.value)}
                     disabled={isClocked}
-                    className="w-full h-14 bg-gray-50 border border-gray-200 rounded-lg px-4 text-sm text-gray-800 focus:ring-2 focus:ring-[#005ea3] focus:border-transparent outline-none appearance-none transition-all disabled:opacity-50"
+                    className="w-full h-14 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg px-4 text-sm text-gray-800 dark:text-gray-200 focus:ring-2 focus:ring-[#005ea3] focus:border-transparent outline-none appearance-none transition-all disabled:opacity-50"
                   >
                     <option value="">Select an employer to clock in...</option>
                     {mockEmployers.map((e) => (
@@ -149,7 +149,7 @@ export default function ClockPage() {
 
             {/* Active Session Card */}
             {isClocked && (
-              <div className="bg-white rounded-xl border-l-4 border-[#006a44] border border-gray-200/80 overflow-hidden"
+              <div className="bg-white dark:bg-[#1f2937] rounded-xl border-l-4 border-[#006a44] border border-gray-200 dark:border-gray-700/80 dark:border-gray-700/80 overflow-hidden"
                 style={{ boxShadow: '0 4px 12px rgba(0,106,68,0.12)' }}>
                 <div className="p-6">
                   <div className="flex items-center justify-between mb-6">
@@ -159,7 +159,7 @@ export default function ClockPage() {
                         <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
                         <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-green-500"></span>
                       </span>
-                      <h4 className="font-bold text-gray-900">Active Session</h4>
+                      <h4 className="font-bold text-gray-900 dark:text-white">Active Session</h4>
                     </div>
                     <span className="px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider bg-green-100 text-green-700">
                       In Progress
@@ -169,7 +169,7 @@ export default function ClockPage() {
                   <div className="grid grid-cols-3 gap-6">
                     <div>
                       <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-1">Clocked In</p>
-                      <p className="font-mono text-lg font-semibold text-gray-900">{clockInTime}</p>
+                      <p className="font-mono text-lg font-semibold text-gray-900 dark:text-white">{clockInTime}</p>
                     </div>
                     <div>
                       <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-1">Duration</p>
@@ -182,7 +182,7 @@ export default function ClockPage() {
                   </div>
                 </div>
                 {/* Progress bar */}
-                <div className="h-1 bg-gray-100">
+                <div className="h-1 bg-gray-100 dark:bg-gray-800">
                   <div
                     className="h-full bg-[#006a44] transition-all duration-1000"
                     style={{ width: `${Math.min((secondsElapsed / 28800) * 100, 100)}%` }}
@@ -214,15 +214,15 @@ export default function ClockPage() {
                 </div>
               </div>
               {/* Decorative blobs */}
-              <div className="absolute -right-8 -bottom-8 w-36 h-36 bg-white/10 rounded-full blur-3xl" />
+              <div className="absolute -right-8 -bottom-8 w-36 h-36 bg-white dark:bg-[#1f2937]/10 rounded-full blur-3xl" />
               <div className="absolute right-10 top-0 w-16 h-16 bg-green-400/20 rounded-full blur-2xl" />
             </div>
 
             {/* Recent Sessions Table */}
-            <div className="bg-white rounded-xl border border-gray-200/80 overflow-hidden flex flex-col"
+            <div className="bg-white dark:bg-[#1f2937] rounded-xl border border-gray-200 dark:border-gray-700/80 dark:border-gray-700/80 overflow-hidden flex flex-col"
               style={{ boxShadow: '0 4px 6px -1px rgba(0,94,163,0.08)' }}>
-              <div className="px-6 py-4 border-b border-gray-100 flex justify-between items-center">
-                <h4 className="font-bold text-gray-900">Recent Sessions</h4>
+              <div className="px-6 py-4 border-b border-gray-100 dark:border-gray-700 flex justify-between items-center">
+                <h4 className="font-bold text-gray-900 dark:text-white">Recent Sessions</h4>
                 <button className="text-[11px] font-bold uppercase tracking-widest text-[#005ea3] hover:underline">
                   View All
                 </button>
@@ -230,24 +230,24 @@ export default function ClockPage() {
 
               <div className="overflow-y-auto">
                 <table className="w-full text-left">
-                  <thead className="bg-gray-50 sticky top-0">
+                  <thead className="bg-gray-50 dark:bg-gray-800 sticky top-0">
                     <tr>
                       <th className="px-6 py-3 text-[10px] font-bold uppercase tracking-widest text-gray-400">Employer</th>
                       <th className="px-6 py-3 text-[10px] font-bold uppercase tracking-widest text-gray-400">Time</th>
                       <th className="px-6 py-3 text-[10px] font-bold uppercase tracking-widest text-gray-400 text-right">Earnings</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-gray-100">
+                  <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
                     {mockSessions.map((session) => (
-                      <tr key={session.id} className="hover:bg-gray-50 transition-colors">
+                      <tr key={session.id} className="hover:bg-gray-50 dark:hover:bg-gray-700 dark:bg-gray-800 transition-colors">
                         <td className="px-6 py-4">
-                          <p className="font-semibold text-sm text-gray-900 truncate">{session.employer}</p>
+                          <p className="font-semibold text-sm text-gray-900 dark:text-white truncate">{session.employer}</p>
                           <span className="inline-block mt-1 px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-green-100 text-green-700">
                             Completed
                           </span>
                         </td>
                         <td className="px-6 py-4">
-                          <p className="font-mono text-sm text-gray-800">{session.clockIn} – {session.clockOut}</p>
+                          <p className="font-mono text-sm text-gray-800 dark:text-gray-200">{session.clockIn} – {session.clockOut}</p>
                           <p className="text-xs text-gray-400 mt-0.5">{session.hours}h</p>
                         </td>
                         <td className="px-6 py-4 text-right">

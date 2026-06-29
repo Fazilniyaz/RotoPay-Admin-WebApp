@@ -85,7 +85,7 @@ export default function CalendarPage() {
         <section className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
           <div>
             <h1 className="text-2xl sm:text-3xl font-extrabold text-[#005ea3]">Calendar</h1>
-            <p className="text-sm text-[#404752] mt-0.5">View your schedule at a glance</p>
+            <p className="text-sm text-[#404752] dark:text-gray-200 mt-0.5">View your schedule at a glance</p>
           </div>
           <button className="flex items-center gap-2 px-5 py-2.5 rounded-lg font-bold text-sm text-white shadow-lg transition-transform hover:scale-[1.02] active:scale-95"
             style={{ background: 'linear-gradient(135deg,#0077cc 0%,#005ea3 100%)' }}>
@@ -95,36 +95,36 @@ export default function CalendarPage() {
         </section>
 
         {/* ── Controls Row ── */}
-        <section className="flex flex-col sm:flex-row justify-between items-center gap-4 bg-[#f5f3f3] p-4 rounded-xl border border-[#c0c7d4]/30 shadow-sm">
+        <section className="flex flex-col sm:flex-row justify-between items-center gap-4 bg-[#f5f3f3] dark:bg-gray-800 p-4 rounded-xl border border-[#c0c7d4] dark:border-gray-700/30 dark:border-gray-700/80 shadow-sm">
           {/* Month Nav */}
           <div className="flex items-center gap-3">
-            <div className="flex items-center bg-white border border-[#c0c7d4]/40 rounded-lg overflow-hidden">
+            <div className="flex items-center bg-white dark:bg-[#1f2937] border border-[#c0c7d4] dark:border-gray-700/40 dark:border-gray-700/80 rounded-lg overflow-hidden">
               <button onClick={goToPrev}
-                className="p-2 text-[#005ea3] hover:bg-[#efeded] transition-colors">
+                className="p-2 text-[#005ea3] hover:bg-[#efeded] dark:bg-gray-700 transition-colors">
                 <ChevronLeft className="h-4 w-4" />
               </button>
               <span className="px-5 py-1.5 font-semibold text-[#005ea3] text-sm whitespace-nowrap">
                 {monthLabel}
               </span>
               <button onClick={goToNext}
-                className="p-2 text-[#005ea3] hover:bg-[#efeded] transition-colors">
+                className="p-2 text-[#005ea3] hover:bg-[#efeded] dark:bg-gray-700 transition-colors">
                 <ChevronRight className="h-4 w-4" />
               </button>
             </div>
             <button onClick={goToToday}
-              className="px-4 py-2 bg-white border border-[#c0c7d4]/40 rounded-lg text-sm font-bold text-[#404752] hover:text-[#005ea3] transition-colors">
+              className="px-4 py-2 bg-white dark:bg-[#1f2937] border border-[#c0c7d4] dark:border-gray-700/40 dark:border-gray-700/80 rounded-lg text-sm font-bold text-[#404752] dark:text-gray-200 hover:text-[#005ea3] dark:hover:text-[#a0c9ff] transition-colors">
               Today
             </button>
           </div>
 
           {/* View Toggle */}
-          <div className="flex bg-white border border-[#c0c7d4]/40 rounded-lg overflow-hidden p-1 gap-1">
+          <div className="flex bg-white dark:bg-[#1f2937] border border-[#c0c7d4] dark:border-gray-700/40 dark:border-gray-700/80 rounded-lg overflow-hidden p-1 gap-1">
             {(['Month', 'Week', 'Day'] as ViewMode[]).map(v => (
               <button key={v}
                 onClick={() => setViewMode(v)}
                 className={`px-5 py-1.5 rounded-md text-sm font-bold transition-all ${viewMode === v
                     ? 'bg-[#0077cc] text-white shadow-sm'
-                    : 'text-[#404752] hover:text-[#005ea3]'
+                    : 'text-[#404752] dark:text-gray-200 hover:text-[#005ea3] dark:hover:text-[#a0c9ff]'
                   }`}>
                 {v}
               </button>
@@ -133,11 +133,11 @@ export default function CalendarPage() {
         </section>
 
         {/* ── Calendar Grid ── */}
-        <section className="bg-white rounded-2xl shadow-lg border border-[#c0c7d4]/30 overflow-hidden">
+        <section className="bg-white dark:bg-[#1f2937] rounded-2xl shadow-lg border border-[#c0c7d4] dark:border-gray-700/30 dark:border-gray-700/80 overflow-hidden">
           {/* Day-name headers */}
-          <div className="grid grid-cols-7 border-b border-[#c0c7d4]/20 bg-[#f5f3f3]/60">
+          <div className="grid grid-cols-7 border-b border-[#c0c7d4] dark:border-gray-700/20 dark:border-gray-700/80 bg-[#f5f3f3]/60 dark:bg-gray-80060">
             {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(d => (
-              <div key={d} className="py-3 text-center text-[10px] font-bold tracking-widest uppercase text-[#404752]/60">
+              <div key={d} className="py-3 text-center text-[10px] font-bold tracking-widest uppercase text-[#404752] dark:text-gray-200/60 dark:text-gray-400">
                 {d}
               </div>
             ))}
@@ -153,12 +153,12 @@ export default function CalendarPage() {
                 <div
                   key={idx}
                   className={[
-                    'min-h-[100px] sm:min-h-[120px] p-2 border-r border-b border-[#c0c7d4]/20 transition-colors duration-150',
+                    'min-h-[100px] sm:min-h-[120px] p-2 border-r border-b border-[#c0c7d4] dark:border-gray-700/20 dark:border-gray-700/80 transition-colors duration-150',
                     day
                       ? todayCell
-                        ? 'bg-[#005ea3]/5 ring-2 ring-inset ring-[#005ea3]'
-                        : 'hover:bg-[#f5f3f3] cursor-pointer'
-                      : 'bg-[#efeded]/30',
+                        ? 'bg-[#005ea3]/5 dark:bg-[#a0c9ff]/10 ring-2 ring-inset ring-[#005ea3]'
+                        : 'hover:bg-[#f5f3f3] dark:bg-gray-800 cursor-pointer'
+                      : 'bg-[#efeded]/30 dark:bg-gray-70030',
                     // remove right border on last col
                     (idx + 1) % 7 === 0 ? 'border-r-0' : '',
                   ].join(' ')}
@@ -167,11 +167,11 @@ export default function CalendarPage() {
                     <>
                       {/* Day number */}
                       <div className="flex items-center justify-between mb-1.5">
-                        <span className={`text-xs font-bold ${todayCell ? 'text-[#005ea3]' : 'text-[#1b1c1c]'}`}>
+                        <span className={`text-xs font-bold ${todayCell ? 'text-[#005ea3]' : 'text-[#1b1c1c] dark:text-white'}`}>
                           {day}
                         </span>
                         {todayCell && (
-                          <span className="text-[9px] font-bold text-[#005ea3] bg-[#005ea3]/10 px-1.5 py-0.5 rounded">
+                          <span className="text-[9px] font-bold text-[#005ea3] bg-[#005ea3]/10 dark:bg-[#a0c9ff]/20 px-1.5 py-0.5 rounded">
                             TODAY
                           </span>
                         )}
@@ -193,7 +193,7 @@ export default function CalendarPage() {
                   )}
                   {/* Faded prev-month numbers */}
                   {!day && idx < 7 && (
-                    <span className="text-xs text-[#404752]/30">
+                    <span className="text-xs text-[#404752] dark:text-gray-200/30 dark:text-gray-500 dark:text-gray-400">
                       {new Date(year, month, idx - firstDayOfWeek + 1).getDate() ||
                         new Date(year, month, 0).getDate() - (firstDayOfWeek - idx - 1)}
                     </span>
@@ -208,7 +208,7 @@ export default function CalendarPage() {
         <section className="grid grid-cols-1 lg:grid-cols-3 gap-6 pb-6">
 
           {/* Monthly Utilisation Bar Chart */}
-          <div className="lg:col-span-2 bg-white p-6 rounded-2xl border border-[#c0c7d4]/20 shadow-sm">
+          <div className="lg:col-span-2 bg-white dark:bg-[#1f2937] p-6 rounded-2xl border border-[#c0c7d4] dark:border-gray-700/20 dark:border-gray-700/80 shadow-sm">
             <h3 className="flex items-center gap-2 text-base font-bold text-[#005ea3] mb-4">
               <TrendingUp className="h-5 w-5" />
               Monthly Utilisation
@@ -219,7 +219,7 @@ export default function CalendarPage() {
                   <div
                     className={`w-full rounded-t-md transition-all hover:opacity-90 ${i === 3
                         ? 'bg-gradient-to-t from-[#005ea3] to-[#0077cc]'
-                        : 'bg-[#efeded] hover:bg-[#e4e2e2]'
+                        : 'bg-[#efeded] dark:bg-gray-700 hover:bg-[#e4e2e2]'
                       }`}
                     style={{ height: h }}
                   />
@@ -228,7 +228,7 @@ export default function CalendarPage() {
             </div>
             <div className="flex justify-between mt-2">
               {WEEKS.map(w => (
-                <span key={w} className="text-[10px] font-bold tracking-widest uppercase text-[#404752]/50 w-full text-center">
+                <span key={w} className="text-[10px] font-bold tracking-widest uppercase text-[#404752] dark:text-gray-200/50 dark:text-gray-400 w-full text-center">
                   {w}
                 </span>
               ))}
@@ -241,7 +241,7 @@ export default function CalendarPage() {
             style={{ background: 'linear-gradient(135deg,#0077cc 0%,#005ea3 100%)' }}
           >
             {/* Atmospheric glow */}
-            <div className="absolute -right-16 -top-16 w-56 h-56 bg-white/10 rounded-full blur-3xl pointer-events-none" />
+            <div className="absolute -right-16 -top-16 w-56 h-56 bg-white dark:bg-[#1f2937]/10 rounded-full blur-3xl pointer-events-none" />
 
             <div className="relative">
               <p className="text-[10px] font-bold tracking-widest uppercase opacity-80 mb-1">
@@ -256,7 +256,7 @@ export default function CalendarPage() {
             {/* Upcoming shifts list */}
             <div className="relative mt-5 space-y-2">
               {UPCOMING.map((ev, i) => (
-                <div key={i} className="flex items-center gap-3 bg-white/15 backdrop-blur-sm rounded-lg px-3 py-2">
+                <div key={i} className="flex items-center gap-3 bg-white dark:bg-[#1f2937]/15 backdrop-blur-sm rounded-lg px-3 py-2">
                   <div className="w-1.5 h-1.5 rounded-full bg-[#42e09c] flex-shrink-0" />
                   <div className="min-w-0">
                     <p className="text-xs font-bold truncate">{ev.title}</p>
@@ -264,7 +264,7 @@ export default function CalendarPage() {
                   </div>
                 </div>
               ))}
-              <button className="w-full mt-2 bg-white/20 hover:bg-white/30 transition-colors py-2 rounded-lg text-xs font-bold flex items-center justify-center gap-1">
+              <button className="w-full mt-2 bg-white dark:bg-[#1f2937]/20 hover:bg-white dark:bg-[#1f2937]/30 transition-colors py-2 rounded-lg text-xs font-bold flex items-center justify-center gap-1">
                 View Details <ChevronRight className="h-3.5 w-3.5" />
               </button>
             </div>
