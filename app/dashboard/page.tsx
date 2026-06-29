@@ -223,17 +223,20 @@ function StatCard({ title, value, icon: Icon, change, trend, sub }: typeof mockS
 // ─── Page ──────────────────────────────────────────────────────────
 export default function DashboardPage() {
   const router = useRouter();
-  const { user, isAuthenticated } = authStore();
+  const { user, isAuthenticated, isHydrated } = authStore();
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    if (!isAuthenticated) {
-      router.push('/auth/login');
+    if (isHydrated) {
+      if (!isAuthenticated) {
+        router.push('/auth/login');
+      } else {
+        setIsLoading(false);
+      }
     }
-    setIsLoading(false);
-  }, [isAuthenticated, router]);
+  }, [isAuthenticated, isHydrated, router]);
 
-  if (isLoading || !user) {
+  if (!isHydrated || isLoading || !user) {
     return (
       <DashboardLayout>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 24, marginBottom: 32 }}>

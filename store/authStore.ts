@@ -18,6 +18,7 @@ export interface AuthState {
   theme: 'light' | 'dark' | 'system';
   isLoading: boolean;
   isAuthenticated: boolean;
+  isHydrated: boolean;
 
   // Actions
   setUser: (user: User) => void;
@@ -37,6 +38,7 @@ export const authStore = create<AuthState>()(
       theme: 'system',
       isLoading: false,
       isAuthenticated: false,
+      isHydrated: false,
 
       setUser: (user: User) =>
         set({
@@ -56,6 +58,8 @@ export const authStore = create<AuthState>()(
         }),
 
       setLoading: (isLoading: boolean) => set({ isLoading }),
+      
+      setHydrated: (state: boolean) => set({ isHydrated: state }),
 
       clearAuth: () =>
         set({
@@ -82,6 +86,9 @@ export const authStore = create<AuthState>()(
         theme: state.theme,
         user: state.user,
       }),
+      onRehydrateStorage: () => (state) => {
+        state?.setHydrated(true);
+      },
     }
   )
 );
