@@ -15,8 +15,8 @@ export const metadata: Metadata = {
   description: 'Manage your shifts, track your earnings, and get paid on time with RotaPay.',
   generator: 'v0.app',
   icons: {
-    icon: '/rotapay-logo.png',
-    apple: '/rotapay-logo.png',
+    icon: '/logo/Logo/Rotapay-01.svg',
+    apple: '/logo/Logo/Rotapay-01.svg',
   },
 }
 
