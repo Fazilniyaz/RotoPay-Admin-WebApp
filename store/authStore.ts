@@ -76,7 +76,9 @@ export const authStore = create<AuthState>()(
     {
       name: 'rotapay-auth',
       partialize: (state) => ({
+        accessToken: state.accessToken,
         refreshToken: state.refreshToken,
+        isAuthenticated: state.isAuthenticated,
         theme: state.theme,
         user: state.user,
       }),
