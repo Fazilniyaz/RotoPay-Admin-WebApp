@@ -64,6 +64,7 @@ export function DesktopSidebar() {
           -webkit-backdrop-filter: blur(16px);
           border-right: 1px solid rgba(0, 94, 163, 0.10);
           transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+          font-family: 'Montserrat', sans-serif;
           display: flex;
           flex-direction: column;
           height: 100vh;
@@ -198,8 +199,8 @@ export function DesktopSidebar() {
           transition: background 0.15s, color 0.15s, transform 0.15s;
           color: #404752;
           font-family: 'Montserrat', sans-serif;
-          font-size: 14px;
-          font-weight: 500;
+          font-size: 15px;
+          font-weight: 600;
           white-space: nowrap;
           overflow: hidden;
           border: 1px solid transparent;
