@@ -286,7 +286,7 @@ export default function DashboardPage() {
 
         {/* ── Stat Cards ── */}
         <section aria-label="Overview statistics" style={{ marginBottom: "28px" }}>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: "16px" }}>
+          <div className="stat-cards-grid" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: "16px" }}>
             <StatCard
               icon={DollarSign}
               label="Total earnings"
@@ -323,7 +323,7 @@ export default function DashboardPage() {
         </section>
 
         {/* ── Bottom Grid ── */}
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 340px", gap: "20px", alignItems: "start" }}>
+        <div className="dashboard-bottom-grid" style={{ display: "grid", gridTemplateColumns: "1fr 340px", gap: "20px", alignItems: "start" }}>
 
           {/* Profile Card */}
           <section className="glass-card" style={{ padding: "28px" }} aria-label="Your profile">
@@ -412,7 +412,7 @@ export default function DashboardPage() {
           </section>
 
           {/* Quick Actions + Welcome */}
-          <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
+          <div className="dashboard-right-col" style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
 
             {/* Welcome card */}
             <div style={{
@@ -480,14 +480,17 @@ export default function DashboardPage() {
           .sidebar { transform: translateX(-100%); transition: transform 0.3s ease; }
           main { margin-left: 0 !important; }
           .mobile-header { display: flex !important; align-items: center; justify-content: space-between; margin-bottom: 24px; }
+          .dashboard-bottom-grid { grid-template-columns: 1fr !important; }
         }
         @media (max-width: 768px) {
           main { padding: 20px !important; }
-          div[style*="gridTemplateColumns: 1fr 340px"] { grid-template-columns: 1fr !important; }
-          div[style*="gridTemplateColumns: repeat(auto-fit"] { grid-template-columns: 1fr 1fr !important; }
+          .dashboard-bottom-grid { grid-template-columns: 1fr !important; }
+          .dashboard-right-col { flex-direction: column; }
+          .stat-cards-grid { grid-template-columns: 1fr 1fr !important; }
         }
         @media (max-width: 480px) {
-          div[style*="gridTemplateColumns: 1fr 1fr"] { grid-template-columns: 1fr !important; }
+          .stat-cards-grid { grid-template-columns: 1fr !important; }
+          main { padding: 16px !important; }
         }
         .animate-spin { animation: spin 1s linear infinite; }
         @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
