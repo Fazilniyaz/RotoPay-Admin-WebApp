@@ -1,267 +1,446 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useEffect, useState, useCallback, useMemo } from 'react';
+import { toast } from 'sonner';
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
-import { Play, Square } from 'lucide-react';
+import {
+  Play,
+  Square,
+  Clock as ClockIcon,
+  Wallet,
+  Timer,
+  Loader2,
+  Zap,
+  TrendingUp,
+} from 'lucide-react';
+import { ClockSession, Salary } from '@/lib/types';
+import { listSalaries } from '@/lib/services/salaries';
+import { getActiveClocks, clockIn, clockOut, listClock } from '@/lib/services/clock';
+import { money, currencySymbol, fmtDateShort as fmtDate, fmtTime } from '@/lib/format';
 
-const mockEmployers = [
-  { id: 1, name: 'Coffee Co', rate: 10 },
-  { id: 2, name: 'Retail Plus', rate: 12 },
-  { id: 3, name: 'Delivery Co', rate: 15 },
-];
+const GRADIENT = 'linear-gradient(135deg, #005ea3 0%, #006d30 100%)';
+const primaryStyle = { background: GRADIENT };
+const cardCls =
+  'bg-white dark:bg-[#1f2937] rounded-[10px] border border-[rgba(0,94,163,0.08)] dark:border-[rgba(160,201,255,0.08)] shadow-[0_4px_6px_rgba(0,123,210,0.06),0_2px_4px_rgba(0,123,210,0.04)]';
 
-const mockSessions = [
-  { id: 1, employer: 'Coffee Co', clockIn: '09:00', clockOut: '17:00', hours: 8, earnings: 80 },
-  { id: 2, employer: 'Retail Plus', clockIn: '18:00', clockOut: '21:00', hours: 3, earnings: 96 },
-  { id: 3, employer: 'Delivery Co', clockIn: '09:00', clockOut: '12:30', hours: 3.5, earnings: 52.5 },
-];
+const pad = (n: number) => String(n).padStart(2, '0');
+const fmtElapsed = (ms: number) => {
+  const s = Math.max(0, Math.floor(ms / 1000));
+  return `${pad(Math.floor(s / 3600))}:${pad(Math.floor((s % 3600) / 60))}:${pad(s % 60)}`;
+};
+const initials = (name?: string | null) =>
+  (name ?? '?')
+    .split(' ')
+    .map((w) => w[0])
+    .filter(Boolean)
+    .slice(0, 2)
+    .join('')
+    .toUpperCase() || '?';
+
+const salaryLabel = (s: Salary) => {
+  const emp = s.employer?.employerName ?? 'Unknown';
+  const when = s.shift?.startDate ? fmtDate(s.shift.startDate) : 'no shift';
+  const rate = s.hourlyPayRate != null ? `${currencySymbol()}${s.hourlyPayRate}/h` : '—';
+  return `${emp} · ${when} · ${rate}`;
+};
 
 export default function ClockPage() {
-  const [isClocked, setIsClocked] = useState(false);
-  const [selectedEmployer, setSelectedEmployer] = useState('');
-  const [currentTime, setCurrentTime] = useState('');
-  const [currentDate, setCurrentDate] = useState('');
-  const [secondsElapsed, setSecondsElapsed] = useState(0);
-  const [clockInTime, setClockInTime] = useState('');
+  const [active, setActive] = useState<ClockSession[]>([]);
+  const [salaries, setSalaries] = useState<Salary[]>([]);
+  const [sessions, setSessions] = useState<ClockSession[]>([]);
+  const [summary, setSummary] = useState({ totalHours: 0, totalEarnings: 0 });
+  const [loading, setLoading] = useState(true);
+  const [selectedSalaryId, setSelectedSalaryId] = useState('');
+  const [busyIn, setBusyIn] = useState(false);
+  const [busyOut, setBusyOut] = useState<string | null>(null);
+  const [now, setNow] = useState(() => new Date());
 
-  // Live clock
-  useEffect(() => {
-    const tick = () => {
-      const now = new Date();
-      setCurrentTime(
-        now.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', second: '2-digit' })
-      );
-      setCurrentDate(
-        now.toLocaleDateString('en-GB', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })
-      );
-    };
-    tick();
-    const timer = setInterval(tick, 1000);
-    return () => clearInterval(timer);
+  const load = useCallback(async () => {
+    setLoading(true);
+    try {
+      const [act, salRes, hist] = await Promise.all([
+        getActiveClocks(),
+        listSalaries({ limit: 100 }),
+        listClock({ status: 'completed', limit: 50 }),
+      ]);
+      setActive(act);
+      setSalaries(salRes.data);
+      setSessions(hist.data);
+      setSummary({
+        totalHours: hist.meta?.summary?.totalHours ?? 0,
+        totalEarnings: hist.meta?.summary?.totalEarnings ?? 0,
+      });
+    } catch {
+      toast.error('Failed to load clock data');
+    } finally {
+      setLoading(false);
+    }
   }, []);
 
-  // Active session timer
   useEffect(() => {
-    if (!isClocked) return;
-    const timer = setInterval(() => setSecondsElapsed((s) => s + 1), 1000);
-    return () => clearInterval(timer);
-  }, [isClocked]);
+    load();
+  }, [load]);
 
-  const formatDuration = (secs: number) => {
-    const h = Math.floor(secs / 3600);
-    const m = Math.floor((secs % 3600) / 60);
-    const s = secs % 60;
-    return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+  useEffect(() => {
+    const t = setInterval(() => setNow(new Date()), 1000);
+    return () => clearInterval(t);
+  }, []);
+
+  const activeSalaryIds = useMemo(() => new Set(active.map((a) => a.salaryId)), [active]);
+  const clockable = useMemo(
+    () => salaries.filter((s) => s.employer && s.shift && !activeSalaryIds.has(s.id)),
+    [salaries, activeSalaryIds]
+  );
+
+  // Live total of everything currently running (for the hero stat).
+  const liveEarnings = useMemo(
+    () =>
+      active.reduce((sum, s) => {
+        const ms = now.getTime() - new Date(s.clockInTime).getTime();
+        return sum + (ms / 3_600_000) * (s.salary?.hourlyPayRate ?? 0);
+      }, 0),
+    [active, now]
+  );
+
+  const doClockIn = async () => {
+    if (!selectedSalaryId) {
+      toast.error('Select an employer/shift to clock in');
+      return;
+    }
+    setBusyIn(true);
+    try {
+      await clockIn(selectedSalaryId);
+      toast.success('Clocked in');
+      setSelectedSalaryId('');
+      load();
+    } catch (err: any) {
+      toast.error(err?.response?.data?.message || 'Clock in failed');
+    } finally {
+      setBusyIn(false);
+    }
   };
 
-  const activeEmployer = mockEmployers.find((e) => e.id.toString() === selectedEmployer);
-  const estimatedEarnings = activeEmployer
-    ? ((secondsElapsed / 3600) * activeEmployer.rate).toFixed(2)
-    : '0.00';
-
-  const dailyTotal = mockSessions.reduce((sum, s) => sum + s.earnings, 0);
-  const dailyHours = mockSessions.reduce((sum, s) => sum + s.hours, 0);
-
-  const handleClockIn = () => {
-    if (!selectedEmployer) return;
-    setIsClocked(true);
-    setSecondsElapsed(0);
-    setClockInTime(new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }));
+  const doClockOut = async (id: string) => {
+    setBusyOut(id);
+    try {
+      const done = await clockOut(id);
+      toast.success(`Clocked out · ${money(done.earnings)} earned`);
+      load();
+    } catch (err: any) {
+      toast.error(err?.response?.data?.message || 'Clock out failed');
+      setBusyOut(null);
+    }
   };
 
-  const handleClockOut = () => {
-    setIsClocked(false);
-    setSelectedEmployer('');
-    setSecondsElapsed(0);
-    setClockInTime('');
-  };
+  const currentTime = now.toLocaleTimeString('en-GB', {
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+  });
+  const currentDate = now.toLocaleDateString('en-GB', {
+    weekday: 'long',
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+  });
+
+  const stats = [
+    { label: 'On The Clock', value: String(active.length), icon: Zap },
+    { label: 'Total Hours', value: `${summary.totalHours}h`, icon: ClockIcon },
+    { label: 'Total Earnings', value: money(summary.totalEarnings), icon: Wallet },
+  ];
 
   return (
     <DashboardLayout>
-      <div className="space-y-8">
+      <div className="space-y-6">
         {/* Header */}
         <div>
-          <h1 className="text-3xl font-extrabold text-[#005ea3]">Clock In/Out</h1>
-          <p className="text-sm text-gray-400 mt-0.5">Track your working hours in real-time</p>
+          <h1 className="text-3xl font-extrabold text-[#005ea3]">Time Clock</h1>
+          <p className="text-sm text-gray-400 mt-0.5">Track worked hours &amp; earnings in real time</p>
         </div>
 
-        {/* Bento Grid */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        {/* Gradient hero: live clock + clock-in control */}
+        <div
+          className="relative overflow-hidden rounded-[10px] p-6 sm:p-8 text-white shadow-[0_8px_24px_rgba(0,94,163,0.25)]"
+          style={primaryStyle}
+        >
+          <div className="absolute -right-12 -top-14 w-48 h-48 rounded-full bg-white/10 blur-2xl pointer-events-none" />
+          <div className="absolute -left-10 -bottom-20 w-52 h-52 rounded-full bg-[#6aff90]/15 blur-2xl pointer-events-none" />
 
-          {/* Left: Main Clock + Active Session */}
-          <div className="lg:col-span-7 space-y-6">
-
-            {/* Main Clock Card */}
-            <div className="bg-white dark:bg-[#1f2937] rounded-xl border border-gray-200 dark:border-gray-700/80 dark:border-gray-700/80 p-10 flex flex-col items-center text-center"
-              style={{ boxShadow: '0 4px 6px -1px rgba(0,94,163,0.08)' }}>
-              {/* Live Time */}
-              <div className="font-mono text-[64px] leading-tight font-medium text-[#005ea3] tracking-tighter mb-1">
-                {currentTime || '00:00:00'}
-              </div>
-              <div className="text-[11px] font-bold uppercase tracking-widest text-gray-400 mb-10">
+          <div className="relative grid lg:grid-cols-2 gap-6 lg:gap-8 items-center">
+            {/* Live clock */}
+            <div className="text-center lg:text-left">
+              <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-white/60">
                 {currentDate}
-              </div>
-
-              {/* Employer Select */}
-              <div className="w-full max-w-md space-y-5">
-                <div className="relative">
-                  <label className="absolute -top-2.5 left-4 bg-white dark:bg-[#1f2937] px-1 text-[10px] font-bold uppercase tracking-widest text-gray-400 z-10">
-                    Employer
-                  </label>
-                  <select
-                    value={selectedEmployer}
-                    onChange={(e) => setSelectedEmployer(e.target.value)}
-                    disabled={isClocked}
-                    className="w-full h-14 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg px-4 text-sm text-gray-800 dark:text-gray-200 focus:ring-2 focus:ring-[#005ea3] focus:border-transparent outline-none appearance-none transition-all disabled:opacity-50"
-                  >
-                    <option value="">Select an employer to clock in...</option>
-                    {mockEmployers.map((e) => (
-                      <option key={e.id} value={e.id.toString()}>
-                        {e.name} — £{e.rate}/h
-                      </option>
-                    ))}
-                  </select>
-                  <svg className="absolute right-4 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 pointer-events-none" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
-                </div>
-
-                {/* Clock Button */}
-                {!isClocked ? (
-                  <button
-                    onClick={handleClockIn}
-                    disabled={!selectedEmployer}
-                    className="w-full h-16 rounded-lg text-white font-bold text-base flex items-center justify-center gap-3 shadow-lg hover:scale-[1.02] active:scale-[0.98] transition-all duration-200 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:scale-100"
-                    style={{ background: 'linear-gradient(135deg, #005ea3 0%, #006a44 100%)' }}
-                  >
-                    <Play className="h-6 w-6 fill-white" />
-                    Clock In
-                  </button>
-                ) : (
-                  <button
-                    onClick={handleClockOut}
-                    className="w-full h-16 rounded-lg text-white font-bold text-base flex items-center justify-center gap-3 shadow-lg hover:scale-[1.02] active:scale-[0.98] transition-all duration-200 bg-red-500 hover:bg-red-600"
-                  >
-                    <Square className="h-6 w-6 fill-white" />
-                    Clock Out
-                  </button>
-                )}
+              </p>
+              <p className="font-mono text-5xl sm:text-6xl font-bold tracking-tight mt-1">
+                {currentTime}
+              </p>
+              <div className="mt-3 inline-flex items-center gap-2 text-xs font-semibold text-white/80">
+                <TrendingUp className="h-3.5 w-3.5" />
+                {active.length > 0
+                  ? `${active.length} on the clock · ≈ ${money(liveEarnings)} accruing`
+                  : 'No one is currently clocked in'}
               </div>
             </div>
 
-            {/* Active Session Card */}
-            {isClocked && (
-              <div className="bg-white dark:bg-[#1f2937] rounded-xl border-l-4 border-[#006a44] border border-gray-200 dark:border-gray-700/80 dark:border-gray-700/80 overflow-hidden"
-                style={{ boxShadow: '0 4px 12px rgba(0,106,68,0.12)' }}>
-                <div className="p-6">
-                  <div className="flex items-center justify-between mb-6">
-                    <div className="flex items-center gap-3">
-                      {/* Pulse dot */}
-                      <span className="relative flex h-2.5 w-2.5">
-                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
-                        <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-green-500"></span>
-                      </span>
-                      <h4 className="font-bold text-gray-900 dark:text-white">Active Session</h4>
-                    </div>
-                    <span className="px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider bg-green-100 text-green-700">
-                      In Progress
-                    </span>
-                  </div>
+            {/* Clock-in control */}
+            <div className="rounded-[10px] bg-white/10 backdrop-blur-sm border border-white/15 p-4">
+              <p className="text-[10px] font-bold uppercase tracking-widest text-white/70 mb-2">
+                Clock someone in
+              </p>
+              <div className="flex flex-col sm:flex-row gap-2.5">
+                <select
+                  value={selectedSalaryId}
+                  onChange={(e) => setSelectedSalaryId(e.target.value)}
+                  className="flex-1 rounded-md px-3.5 py-3 text-sm text-[#1b1c1c] bg-white outline-none"
+                  disabled={clockable.length === 0}
+                >
+                  <option value="">
+                    {clockable.length === 0 ? 'No employees available' : 'Select employer / shift…'}
+                  </option>
+                  {clockable.map((s) => (
+                    <option key={s.id} value={s.id}>
+                      {salaryLabel(s)}
+                    </option>
+                  ))}
+                </select>
+                <button
+                  onClick={doClockIn}
+                  disabled={busyIn || clockable.length === 0}
+                  className="inline-flex items-center justify-center gap-2 bg-white text-[#005ea3] px-6 py-3 rounded-md text-[12px] font-bold uppercase tracking-widest hover:bg-white/90 transition-colors disabled:opacity-50"
+                >
+                  <Play className="h-4 w-4 fill-current" />
+                  {busyIn ? '…' : 'Clock In'}
+                </button>
+              </div>
+              {clockable.length === 0 && active.length === 0 && (
+                <p className="text-[11px] text-white/70 mt-2">
+                  Assign an employer &amp; salary to a shift first, then clock into it.
+                </p>
+              )}
+            </div>
+          </div>
+        </div>
 
-                  <div className="grid grid-cols-3 gap-6">
-                    <div>
-                      <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-1">Clocked In</p>
-                      <p className="font-mono text-lg font-semibold text-gray-900 dark:text-white">{clockInTime}</p>
-                    </div>
-                    <div>
-                      <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-1">Duration</p>
-                      <p className="font-mono text-lg font-semibold text-[#005ea3]">{formatDuration(secondsElapsed)}</p>
-                    </div>
-                    <div>
-                      <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-1">Est. Earnings</p>
-                      <p className="font-mono text-lg font-semibold text-[#006a44]">£{estimatedEarnings}</p>
-                    </div>
+        {/* Stat cards */}
+        <div className="grid grid-cols-3 gap-3 sm:gap-4">
+          {stats.map((c) => {
+            const Icon = c.icon;
+            return (
+              <div key={c.label} className={`${cardCls} p-4 sm:p-5`}>
+                <div className="flex items-start justify-between gap-2">
+                  <div className="min-w-0">
+                    <p className="text-[9px] sm:text-[11px] font-bold uppercase tracking-[0.07em] text-[#707783] dark:text-gray-400 mb-1">
+                      {c.label}
+                    </p>
+                    <p className="font-mono text-lg sm:text-2xl font-medium text-[#005ea3] dark:text-[#a0c9ff] truncate">
+                      {c.value}
+                    </p>
+                  </div>
+                  <div
+                    className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg flex items-center justify-center flex-shrink-0 shadow-sm"
+                    style={primaryStyle}
+                  >
+                    <Icon className="h-4 w-4 sm:h-5 sm:w-5 text-white" strokeWidth={2} />
                   </div>
                 </div>
-                {/* Progress bar */}
-                <div className="h-1 bg-gray-100 dark:bg-gray-800">
-                  <div
-                    className="h-full bg-[#006a44] transition-all duration-1000"
-                    style={{ width: `${Math.min((secondsElapsed / 28800) * 100, 100)}%` }}
-                  />
+              </div>
+            );
+          })}
+        </div>
+
+        {loading ? (
+          <div className="flex items-center justify-center min-h-[160px] text-gray-400">
+            <Loader2 className="h-6 w-6 animate-spin" />
+          </div>
+        ) : (
+          <>
+            {/* Active live cards */}
+            {active.length > 0 && (
+              <div>
+                <h3 className="text-[11px] font-bold uppercase tracking-widest text-[#707783] dark:text-gray-400 mb-3 flex items-center gap-2">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 pulse-glow" />
+                  Currently Clocked In
+                </h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {active.map((s) => {
+                    const elapsedMs = now.getTime() - new Date(s.clockInTime).getTime();
+                    const rate = s.salary?.hourlyPayRate ?? 0;
+                    const est = Math.round((elapsedMs / 3_600_000) * rate * 100) / 100;
+                    const name = s.salary?.employer?.employerName ?? 'Shift';
+                    return (
+                      <div key={s.id} className={`${cardCls} overflow-hidden`}>
+                        <div className="h-1 w-full" style={primaryStyle} />
+                        <div className="p-5">
+                          <div className="flex items-center justify-between gap-2 mb-4">
+                            <div className="flex items-center gap-3 min-w-0">
+                              <div
+                                className="w-10 h-10 rounded-lg flex items-center justify-center text-white text-xs font-bold flex-shrink-0 shadow-sm"
+                                style={primaryStyle}
+                              >
+                                {initials(name)}
+                              </div>
+                              <div className="min-w-0">
+                                <p className="font-bold text-sm text-[#1b1c1c] dark:text-white truncate">
+                                  {name}
+                                </p>
+                                <p className="text-[11px] text-[#707783] dark:text-gray-400 truncate">
+                                  {s.salary?.shift?.startDate ? fmtDate(s.salary.shift.startDate) : 'No shift'} · in{' '}
+                                  {fmtTime(s.clockInTime)}
+                                </p>
+                              </div>
+                            </div>
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wider bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300 flex-shrink-0">
+                              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 pulse-glow" />
+                              Live
+                            </span>
+                          </div>
+
+                          <p className="font-mono text-4xl font-bold text-center text-[#1b1c1c] dark:text-white tracking-tight">
+                            {fmtElapsed(elapsedMs)}
+                          </p>
+
+                          <div className="grid grid-cols-2 rounded-md bg-[#005ea3]/[0.04] dark:bg-white/5 border border-[#005ea3]/[0.06] dark:border-white/5 p-2.5 my-4">
+                            <div className="text-center">
+                              <p className="text-[9px] font-bold uppercase tracking-[0.06em] text-[#707783] dark:text-gray-400 mb-0.5">
+                                Est. Pay
+                              </p>
+                              <p className="font-mono text-sm font-semibold text-[#006d30] dark:text-emerald-400">
+                                {money(est)}
+                              </p>
+                            </div>
+                            <div className="text-center border-l border-[#005ea3]/[0.06] dark:border-white/5">
+                              <p className="text-[9px] font-bold uppercase tracking-[0.06em] text-[#707783] dark:text-gray-400 mb-0.5">
+                                Rate
+                              </p>
+                              <p className="font-mono text-sm font-semibold text-[#005ea3] dark:text-[#a0c9ff]">
+                                {currencySymbol()}{rate}/h
+                              </p>
+                            </div>
+                          </div>
+
+                          <button
+                            onClick={() => doClockOut(s.id)}
+                            disabled={busyOut === s.id}
+                            className="w-full inline-flex items-center justify-center gap-2 py-2.5 rounded-md text-[11px] font-bold uppercase tracking-widest text-white bg-[#b3261e] hover:bg-[#9b1f18] transition-colors disabled:opacity-60"
+                          >
+                            <Square className="h-3.5 w-3.5 fill-current" />
+                            {busyOut === s.id ? 'Clocking out…' : 'Clock Out'}
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
             )}
-          </div>
 
-          {/* Right: Daily Summary + Recent Sessions */}
-          <div className="lg:col-span-5 space-y-6">
+            {/* History */}
+            <div className={`${cardCls} p-5 sm:p-6`}>
+              <h3 className="font-bold text-[#1b1c1c] dark:text-white mb-4 flex items-center gap-2">
+                <Timer className="h-4 w-4 text-[#005ea3]" /> Recent Sessions
+              </h3>
 
-            {/* Daily Summary Card */}
-            <div
-              className="rounded-xl p-6 text-white relative overflow-hidden"
-              style={{ background: 'linear-gradient(135deg, #005ea3 0%, #006a44 100%)' }}
-            >
-              <div className="relative z-10">
-                <h4 className="font-bold mb-5">Daily Summary</h4>
-                <div className="flex items-end justify-between">
-                  <div>
-                    <p className="text-[10px] font-bold uppercase tracking-widest opacity-70 mb-1">Total Hours</p>
-                    <p className="font-mono text-5xl font-bold">{dailyHours.toFixed(1)}</p>
-                  </div>
-                  <div className="text-right">
-                    <p className="text-[10px] font-bold uppercase tracking-widest opacity-70 mb-1">Daily Total</p>
-                    <p className="font-mono text-3xl font-medium">£{dailyTotal.toFixed(2)}</p>
-                  </div>
-                </div>
-              </div>
-              {/* Decorative blobs */}
-              <div className="absolute -right-8 -bottom-8 w-36 h-36 bg-white dark:bg-[#1f2937]/10 rounded-full blur-3xl" />
-              <div className="absolute right-10 top-0 w-16 h-16 bg-green-400/20 rounded-full blur-2xl" />
-            </div>
-
-            {/* Recent Sessions Table */}
-            <div className="bg-white dark:bg-[#1f2937] rounded-xl border border-gray-200 dark:border-gray-700/80 dark:border-gray-700/80 overflow-hidden flex flex-col"
-              style={{ boxShadow: '0 4px 6px -1px rgba(0,94,163,0.08)' }}>
-              <div className="px-6 py-4 border-b border-gray-100 dark:border-gray-700 flex justify-between items-center">
-                <h4 className="font-bold text-gray-900 dark:text-white">Recent Sessions</h4>
-                <button className="text-[11px] font-bold uppercase tracking-widest text-[#005ea3] hover:underline">
-                  View All
-                </button>
-              </div>
-
-              <div className="overflow-y-auto">
-                <table className="w-full text-left">
-                  <thead className="bg-gray-50 dark:bg-gray-800 sticky top-0">
-                    <tr>
-                      <th className="px-6 py-3 text-[10px] font-bold uppercase tracking-widest text-gray-400">Employer</th>
-                      <th className="px-6 py-3 text-[10px] font-bold uppercase tracking-widest text-gray-400">Time</th>
-                      <th className="px-6 py-3 text-[10px] font-bold uppercase tracking-widest text-gray-400 text-right">Earnings</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
-                    {mockSessions.map((session) => (
-                      <tr key={session.id} className="hover:bg-gray-50 dark:hover:bg-gray-700 dark:bg-gray-800 transition-colors">
-                        <td className="px-6 py-4">
-                          <p className="font-semibold text-sm text-gray-900 dark:text-white truncate">{session.employer}</p>
-                          <span className="inline-block mt-1 px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-green-100 text-green-700">
-                            Completed
-                          </span>
-                        </td>
-                        <td className="px-6 py-4">
-                          <p className="font-mono text-sm text-gray-800 dark:text-gray-200">{session.clockIn} – {session.clockOut}</p>
-                          <p className="text-xs text-gray-400 mt-0.5">{session.hours}h</p>
-                        </td>
-                        <td className="px-6 py-4 text-right">
-                          <p className="font-mono font-bold text-[#006a44]">£{session.earnings.toFixed(2)}</p>
-                        </td>
+              {sessions.length === 0 ? (
+                <p className="text-sm text-gray-400 py-8 text-center">No completed sessions yet.</p>
+              ) : (
+                <>
+                  {/* Desktop table */}
+                  <table className="w-full hidden sm:table">
+                    <thead>
+                      <tr className="border-b border-[#005ea3]/[0.08] dark:border-white/10">
+                        {['Employer', 'Date', 'In', 'Out', 'Hours', 'Earnings'].map((h, i) => (
+                          <th
+                            key={h}
+                            className={`pb-3 text-[10px] font-bold uppercase tracking-[0.07em] text-[#707783] dark:text-gray-400 ${
+                              i >= 4 ? 'text-right' : 'text-left'
+                            }`}
+                          >
+                            {h}
+                          </th>
+                        ))}
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
+                    </thead>
+                    <tbody>
+                      {sessions.map((s) => {
+                        const name = s.salary?.employer?.employerName ?? 'Shift';
+                        return (
+                          <tr
+                            key={s.id}
+                            className="border-b border-[#005ea3]/[0.05] dark:border-white/5 last:border-0"
+                          >
+                            <td className="py-3">
+                              <div className="flex items-center gap-2.5">
+                                <div
+                                  className="w-8 h-8 rounded-md flex items-center justify-center text-white text-[10px] font-bold flex-shrink-0"
+                                  style={primaryStyle}
+                                >
+                                  {initials(name)}
+                                </div>
+                                <span className="font-semibold text-sm text-[#1b1c1c] dark:text-white">
+                                  {name}
+                                </span>
+                              </div>
+                            </td>
+                            <td className="py-3 text-sm text-[#707783] dark:text-gray-400">
+                              {fmtDate(s.clockInTime)}
+                            </td>
+                            <td className="py-3 text-sm font-mono text-[#1b1c1c] dark:text-gray-200">
+                              {fmtTime(s.clockInTime)}
+                            </td>
+                            <td className="py-3 text-sm font-mono text-[#1b1c1c] dark:text-gray-200">
+                              {fmtTime(s.clockOutTime)}
+                            </td>
+                            <td className="py-3 text-sm font-mono text-right text-[#1b1c1c] dark:text-gray-200">
+                              {s.totalHours ?? 0}h
+                            </td>
+                            <td className="py-3 text-sm font-mono font-bold text-right text-[#006d30] dark:text-emerald-400">
+                              {money(s.earnings)}
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
 
-          </div>
-        </div>
+                  {/* Mobile cards */}
+                  <div className="space-y-2.5 sm:hidden">
+                    {sessions.map((s) => {
+                      const name = s.salary?.employer?.employerName ?? 'Shift';
+                      return (
+                        <div
+                          key={s.id}
+                          className="flex items-center justify-between gap-3 rounded-md border border-[#005ea3]/[0.08] dark:border-white/10 p-3"
+                        >
+                          <div className="flex items-center gap-2.5 min-w-0">
+                            <div
+                              className="w-9 h-9 rounded-md flex items-center justify-center text-white text-[10px] font-bold flex-shrink-0"
+                              style={primaryStyle}
+                            >
+                              {initials(name)}
+                            </div>
+                            <div className="min-w-0">
+                              <p className="font-semibold text-sm text-[#1b1c1c] dark:text-white truncate">
+                                {name}
+                              </p>
+                              <p className="text-xs text-[#707783] dark:text-gray-400 font-mono mt-0.5">
+                                {fmtDate(s.clockInTime)} · {fmtTime(s.clockInTime)}–{fmtTime(s.clockOutTime)} · {s.totalHours ?? 0}h
+                              </p>
+                            </div>
+                          </div>
+                          <span className="font-mono font-bold text-[#006d30] dark:text-emerald-400 flex-shrink-0">
+                            {money(s.earnings)}
+                          </span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </>
+              )}
+            </div>
+          </>
+        )}
       </div>
     </DashboardLayout>
   );

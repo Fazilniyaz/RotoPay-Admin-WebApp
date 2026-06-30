@@ -4,11 +4,17 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/useAuth';
 import {
-  LayoutDashboard,
+  Home,
   Calendar,
   Clock,
-  User,
-  MoreVertical,
+  LayoutGrid,
+  Building2,
+  CalendarDays,
+  BarChart3,
+  Bell,
+  Settings,
+  LogOut,
+  type LucideIcon,
 } from 'lucide-react';
 import {
   DropdownMenu,
@@ -16,15 +22,51 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { Button } from '@/components/ui/button';
 
-const bottomNavItems = [
-  { href: '/dashboard', label: 'Home', icon: LayoutDashboard },
+// Matches the RotaPay native app's bottom-nav accent gradient.
+const GRADIENT = 'linear-gradient(135deg, #007BD2 0%, #37D36B 100%)';
+
+const mainTabs = [
+  { href: '/dashboard', label: 'Home', icon: Home },
   { href: '/dashboard/shifts', label: 'Shifts', icon: Calendar },
   { href: '/dashboard/clock', label: 'Clock', icon: Clock },
-  { href: '/dashboard/calendar', label: 'Calendar', icon: Calendar },
-  { href: '/dashboard/settings', label: 'Profile', icon: User },
 ];
+
+const moreItems = [
+  { href: '/dashboard/employers', label: 'Employers', icon: Building2 },
+  { href: '/dashboard/calendar', label: 'Calendar', icon: CalendarDays },
+  { href: '/dashboard/reports', label: 'Reports', icon: BarChart3 },
+  { href: '/dashboard/notifications', label: 'Notifications', icon: Bell },
+  { href: '/dashboard/settings', label: 'Settings', icon: Settings },
+];
+
+function TabInner({
+  Icon,
+  label,
+  active,
+}: {
+  Icon: LucideIcon;
+  label: string;
+  active: boolean;
+}) {
+  if (active) {
+    return (
+      <div
+        className="flex items-center gap-1.5 px-3.5 py-2 rounded-full shadow-sm"
+        style={{ background: GRADIENT }}
+      >
+        <Icon className="h-[18px] w-[18px] text-white" strokeWidth={2.4} />
+        <span className="text-[12px] font-bold text-white whitespace-nowrap">{label}</span>
+      </div>
+    );
+  }
+  return (
+    <div className="flex flex-col items-center gap-1">
+      <Icon className="h-[22px] w-[22px] text-[#707783] dark:text-gray-400" strokeWidth={1.9} />
+      <span className="text-[10px] font-medium text-[#707783] dark:text-gray-400">{label}</span>
+    </div>
+  );
+}
 
 export function MobileBottomNav() {
   const pathname = usePathname();
@@ -36,49 +78,48 @@ export function MobileBottomNav() {
     router.push('/auth/login');
   };
 
+  const isHome = pathname === '/dashboard';
+  const isShifts = pathname.startsWith('/dashboard/shifts');
+  const isClock = pathname.startsWith('/dashboard/clock');
+  const moreActive =
+    pathname.startsWith('/dashboard') && !isHome && !isShifts && !isClock;
+
+  const isActive = (href: string) =>
+    href === '/dashboard' ? isHome : pathname.startsWith(href);
+
   return (
-    <nav className="fixed bottom-0 left-0 right-0 border-t border-border/50 bg-card">
-      <div className="flex items-center justify-between h-16 px-0 max-w-md mx-auto md:hidden">
-        {bottomNavItems.map((item) => {
-          const Icon = item.icon;
-          const isActive = pathname === item.href;
+    <nav className="fixed bottom-0 left-0 right-0 z-50 md:hidden bg-white dark:bg-[#1f2937] border-t border-[#c0c7d4]/40 dark:border-gray-700/50">
+      <div
+        className="flex items-stretch px-2 pt-2"
+        style={{ paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 8px)' }}
+      >
+        {mainTabs.map((tab) => (
+          <Link
+            key={tab.href}
+            href={tab.href}
+            className="flex-1 flex items-center justify-center py-1"
+          >
+            <TabInner Icon={tab.icon} label={tab.label} active={isActive(tab.href)} />
+          </Link>
+        ))}
 
-          return (
-            <Link key={item.href} href={item.href} className="flex-1">
-              <Button
-                variant="ghost"
-                className={`w-full h-16 rounded-none flex-col gap-1 text-xs font-medium transition-colors ${
-                  isActive
-                    ? 'text-primary border-t-2 border-primary bg-primary/5'
-                    : 'text-muted-foreground hover:bg-muted-bg'
-                }`}
-              >
-                <Icon className={`h-5 w-5 ${isActive ? 'scale-110' : ''}`} />
-                <span>{item.label}</span>
-              </Button>
-            </Link>
-          );
-        })}
-
-        {/* More Menu */}
+        {/* More */}
         <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="ghost" className="w-16 h-16 rounded-none flex-col gap-1 text-xs font-medium">
-              <MoreVertical className="h-5 w-5" />
-              <span>More</span>
-            </Button>
+          <DropdownMenuTrigger className="flex-1 flex items-center justify-center py-1 outline-none">
+            <TabInner Icon={LayoutGrid} label="More" active={moreActive} />
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-48 mb-16">
-            <DropdownMenuItem onClick={() => router.push('/dashboard/employers')}>
-              Employers
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => router.push('/dashboard/reports')}>
-              Reports
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => router.push('/dashboard/notifications')}>
-              Notifications
-            </DropdownMenuItem>
+          <DropdownMenuContent side="top" align="end" className="mb-2 w-52">
+            {moreItems.map((item) => {
+              const Icon = item.icon;
+              return (
+                <DropdownMenuItem key={item.href} onClick={() => router.push(item.href)}>
+                  <Icon className="mr-2 h-4 w-4" />
+                  {item.label}
+                </DropdownMenuItem>
+              );
+            })}
             <DropdownMenuItem onClick={handleLogout} className="text-destructive">
+              <LogOut className="mr-2 h-4 w-4" />
               Logout
             </DropdownMenuItem>
           </DropdownMenuContent>

@@ -314,7 +314,6 @@ export function DesktopSidebar() {
           color: #9ca3af;
         }
 
-        .rp-sidebar[data-collapsed="true"] .rp-logo-text,
         .rp-sidebar[data-collapsed="true"] .rp-nav-label,
         .rp-sidebar[data-collapsed="true"] .rp-user-info {
           width: 0;
@@ -322,13 +321,27 @@ export function DesktopSidebar() {
           pointer-events: none;
         }
 
+        /* When collapsed, hide the wide logo (so it can't be squeezed)
+           and center the toggle button in the narrow rail. */
+        .rp-sidebar[data-collapsed="true"] .rp-sidebar-logo {
+          justify-content: center;
+          padding-left: 0;
+          padding-right: 0;
+        }
+
+        .rp-sidebar[data-collapsed="true"] .rp-logo-mark {
+          display: none;
+        }
+
         .rp-sidebar[data-collapsed="true"] .rp-nav-item {
           justify-content: center;
+          gap: 0;
           padding: 10px;
         }
 
         .rp-sidebar[data-collapsed="true"] .rp-user-card {
           justify-content: center;
+          gap: 0;
           padding: 8px;
         }
 

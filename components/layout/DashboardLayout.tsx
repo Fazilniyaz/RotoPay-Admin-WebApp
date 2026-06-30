@@ -1,9 +1,10 @@
 'use client';
 
-import { ReactNode } from 'react';
+import { ReactNode, useEffect } from 'react';
 import { useMediaQuery } from '@/hooks/useMediaQuery';
 import { DesktopSidebar } from './DesktopSidebar';
 import { MobileBottomNav } from './MobileBottomNav';
+import { getSettings } from '@/lib/services/settings';
 
 interface DashboardLayoutProps {
   children: ReactNode;
@@ -11,6 +12,11 @@ interface DashboardLayoutProps {
 
 export function DashboardLayout({ children }: DashboardLayoutProps) {
   const isMobile = useMediaQuery('(max-width: 768px)');
+
+  // Load the user's global preferences (currency / date / time) once.
+  useEffect(() => {
+    getSettings().catch(() => undefined);
+  }, []);
 
   return (
     <div className="flex h-screen bg-background overflow-hidden">

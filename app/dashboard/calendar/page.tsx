@@ -1,277 +1,565 @@
 'use client';
 
+import { useEffect, useState, useCallback, useMemo } from 'react';
+import { toast } from 'sonner';
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
-import { Button } from '@/components/ui/button';
-import { Plus, ChevronLeft, ChevronRight, TrendingUp, DollarSign, Calendar as CalendarIcon } from 'lucide-react';
-import { useState } from 'react';
+import { Modal, ConfirmDialog } from '@/components/ui/modal';
+import {
+  ChevronLeft,
+  ChevronRight,
+  Plus,
+  Loader2,
+  Clock,
+  Users,
+  Trash2,
+  CalendarDays,
+} from 'lucide-react';
+import { Shift, CalendarEntry, ClockSession, ShiftType } from '@/lib/types';
+import { listShifts } from '@/lib/services/shifts';
+import { listCalendar, createCalendarEntry, deleteCalendarEntry } from '@/lib/services/calendar';
+import { listClock } from '@/lib/services/clock';
 
-type EventType = 'shift' | 'event' | 'meeting' | 'overtime';
+const GRADIENT = 'linear-gradient(135deg, #005ea3 0%, #006d30 100%)';
+const primaryStyle = { background: GRADIENT };
+const cardCls =
+  'bg-white dark:bg-[#1f2937] rounded-[10px] border border-[rgba(0,94,163,0.08)] dark:border-[rgba(160,201,255,0.08)] shadow-[0_4px_6px_rgba(0,123,210,0.06),0_2px_4px_rgba(0,123,210,0.04)]';
+const inputCls =
+  'w-full bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-md px-4 py-3 focus:border-[#005ea3] focus:ring-2 focus:ring-[#005ea3]/10 outline-none transition-all text-sm';
+const labelCls = 'block text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2';
 
-interface CalEvent {
-  type: EventType;
-  title: string;
-  employer?: string;
-  time?: string;
-}
+const WEEKDAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+const typeDot: Record<ShiftType, string> = { day: 'bg-amber-500', night: 'bg-indigo-500', rotational: 'bg-teal-500' };
 
-const EVENT_STYLES: Record<EventType, string> = {
-  shift: 'bg-gradient-to-r from-[#0077cc] to-[#005ea3] text-white',
-  event: 'bg-gradient-to-r from-[#008557] to-[#006a44] text-white',
-  meeting: 'bg-gradient-to-r from-[#0077cc] to-[#008557] text-white',
-  overtime: 'bg-gradient-to-r from-[#0077cc] to-[#008557] text-white',
+const startOfDay = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate());
+const isSameDay = (a: Date, b: Date) =>
+  a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
+const fmtTime = (iso?: string | null) =>
+  iso ? new Date(iso).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }) : '—';
+const within = (day: Date, startISO?: string | null, endISO?: string | null) => {
+  if (!startISO || !endISO) return false;
+  const s = new Date(startISO); s.setHours(0, 0, 0, 0);
+  const e = new Date(endISO); e.setHours(23, 59, 59, 999);
+  return day >= s && day <= e;
 };
-
-const MOCK_EVENTS: Record<number, CalEvent[]> = {
-  2: [{ type: 'shift', title: 'Day Shift', employer: 'Coffee Co', time: '09:00' }],
-  4: [{ type: 'meeting', title: 'Client Meeting', time: '11:00' }],
-  6: [{ type: 'shift', title: 'Night Shift', employer: 'Retail Plus', time: '22:00' }],
-  10: [
-    { type: 'meeting', title: 'Review Call', time: '14:00' },
-    { type: 'event', title: 'Gym Session' },
-  ],
-  12: [{ type: 'shift', title: 'Morning Shift', employer: 'Coffee Co', time: '08:00' }],
-  17: [{ type: 'event', title: 'Dental Appt.' }],
-  18: [
-    { type: 'shift', title: 'Work', employer: 'Coffee Co' },
-    { type: 'event', title: 'Meeting' },
-  ],
-  19: [{ type: 'shift', title: 'Work', employer: 'Retail Plus' }],
-  20: [{ type: 'shift', title: 'Work', employer: 'Coffee Co' }],
-  21: [{ type: 'overtime', title: 'Overtime', employer: 'Delivery Co', time: '18:00' }],
-};
-
-const UPCOMING = [
-  { date: 'Today, 14:00', title: 'Coffee Co Shift', type: 'shift' as EventType },
-  { date: 'Tomorrow, 09:00', title: 'Retail Plus Shift', type: 'shift' as EventType },
-  { date: 'This week, 10:00', title: 'Coffee Co Shift', type: 'shift' as EventType },
-];
-
-const WEEKS = ['W1', 'W2', 'W3', 'W4', 'W5', 'W6', 'W7'];
-const BAR_HEIGHTS = ['40%', '65%', '85%', '95%', '50%', '30%', '60%'];
-
-type ViewMode = 'Month' | 'Week' | 'Day';
+const toDateInput = (d: Date) =>
+  `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 
 export default function CalendarPage() {
-  const today = new Date();
-  const [currentDate, setCurrentDate] = useState(new Date(today.getFullYear(), today.getMonth(), 1));
-  const [viewMode, setViewMode] = useState<ViewMode>('Month');
+  const [viewDate, setViewDate] = useState(() => new Date());
+  const [shifts, setShifts] = useState<Shift[]>([]);
+  const [entries, setEntries] = useState<CalendarEntry[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  const year = currentDate.getFullYear();
-  const month = currentDate.getMonth();
+  // Add-entry modal
+  const [addOpen, setAddOpen] = useState(false);
+  const [addDate, setAddDate] = useState<string>(toDateInput(new Date()));
+  const [addTitle, setAddTitle] = useState('');
+  const [addShiftId, setAddShiftId] = useState('');
+  const [saving, setSaving] = useState(false);
 
-  const daysInMonth = new Date(year, month + 1, 0).getDate();
-  const firstDayOfWeek = new Date(year, month, 1).getDay();
+  // Shift popup (who's clocked in)
+  const [shiftPopup, setShiftPopup] = useState<Shift | null>(null);
+  const [clockedIn, setClockedIn] = useState<ClockSession[]>([]);
+  const [loadingClocked, setLoadingClocked] = useState(false);
 
-  const emptySlots = Array.from({ length: firstDayOfWeek }, () => null);
-  const days = Array.from({ length: daysInMonth }, (_, i) => i + 1);
-  const allDays = [...emptySlots, ...days];
+  // Day detail popup
+  const [dayPopup, setDayPopup] = useState<Date | null>(null);
 
-  const isToday = (day: number) =>
-    day === today.getDate() &&
-    month === today.getMonth() &&
-    year === today.getFullYear();
+  // Delete entry
+  const [delTarget, setDelTarget] = useState<CalendarEntry | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
-  const goToPrev = () => setCurrentDate(new Date(year, month - 1, 1));
-  const goToNext = () => setCurrentDate(new Date(year, month + 1, 1));
-  const goToToday = () => setCurrentDate(new Date(today.getFullYear(), today.getMonth(), 1));
+  const cells = useMemo(() => {
+    const first = new Date(viewDate.getFullYear(), viewDate.getMonth(), 1);
+    const offset = (first.getDay() + 6) % 7; // days since Monday
+    const gridStart = new Date(first.getFullYear(), first.getMonth(), 1 - offset);
+    return Array.from({ length: 42 }, (_, i) =>
+      new Date(gridStart.getFullYear(), gridStart.getMonth(), gridStart.getDate() + i)
+    );
+  }, [viewDate]);
 
-  const monthLabel = currentDate.toLocaleDateString('en-GB', { month: 'long', year: 'numeric' });
+  const load = useCallback(async () => {
+    setLoading(true);
+    try {
+      const from = cells[0];
+      const to = cells[cells.length - 1];
+      const [shiftRes, entryRes] = await Promise.all([
+        listShifts({ limit: 100 }),
+        listCalendar({ from: from.toISOString(), to: new Date(to.getFullYear(), to.getMonth(), to.getDate(), 23, 59, 59).toISOString() }),
+      ]);
+      setShifts(shiftRes.data);
+      setEntries(entryRes);
+    } catch {
+      toast.error('Failed to load calendar');
+    } finally {
+      setLoading(false);
+    }
+  }, [cells]);
+
+  useEffect(() => {
+    load();
+  }, [load]);
+
+  const today = startOfDay(new Date());
+  const monthLabel = viewDate.toLocaleDateString('en-GB', { month: 'long', year: 'numeric' });
+
+  const dayShifts = (d: Date) => shifts.filter((s) => within(d, s.startDate, s.endDate));
+  const dayEntries = (d: Date) => entries.filter((e) => isSameDay(new Date(e.date), d));
+
+  const openAdd = (d: Date) => {
+    setAddDate(toDateInput(d));
+    setAddTitle('');
+    setAddShiftId('');
+    setAddOpen(true);
+  };
+
+  const wordCount = addTitle.trim() ? addTitle.trim().split(/\s+/).length : 0;
+
+  const submitAdd = async () => {
+    if (!addTitle.trim()) {
+      toast.error('Enter a title');
+      return;
+    }
+    if (wordCount > 15) {
+      toast.error('Title must be 15 words or fewer');
+      return;
+    }
+    setSaving(true);
+    try {
+      await createCalendarEntry({
+        date: new Date(addDate).toISOString(),
+        title: addTitle.trim(),
+        shiftId: addShiftId || undefined,
+      });
+      toast.success('Added to calendar');
+      setAddOpen(false);
+      load();
+    } catch (err: any) {
+      toast.error(err?.response?.data?.message || 'Failed to add');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const openShift = async (shift: Shift) => {
+    setShiftPopup(shift);
+    setLoadingClocked(true);
+    setClockedIn([]);
+    try {
+      const res = await listClock({ shiftId: shift.id, status: 'active', limit: 100 });
+      setClockedIn(res.data);
+    } catch {
+      // ignore
+    } finally {
+      setLoadingClocked(false);
+    }
+  };
+
+  const confirmDelete = async () => {
+    if (!delTarget) return;
+    setDeleting(true);
+    try {
+      await deleteCalendarEntry(delTarget.id);
+      toast.success('Entry removed');
+      setDelTarget(null);
+      load();
+    } catch {
+      toast.error('Delete failed');
+    } finally {
+      setDeleting(false);
+    }
+  };
+
+  const addShiftOptions = shifts.filter((s) => within(new Date(addDate), s.startDate, s.endDate));
 
   return (
     <DashboardLayout>
-      <div className="space-y-6 max-w-[1280px] mx-auto">
-
-        {/* ── Page Header ── */}
-        <section className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+      <div className="space-y-6">
+        {/* Header */}
+        <div className="flex items-end justify-between gap-3 flex-wrap">
           <div>
-            <h1 className="text-2xl sm:text-3xl font-extrabold text-[#005ea3]">Calendar</h1>
-            <p className="text-sm text-[#404752] dark:text-gray-200 mt-0.5">View your schedule at a glance</p>
+            <h1 className="text-3xl font-extrabold text-[#005ea3]">Calendar</h1>
+            <p className="text-sm text-gray-400 mt-0.5">Shifts and your day notes at a glance</p>
           </div>
-          <button className="flex items-center gap-2 px-5 py-2.5 rounded-lg font-bold text-sm text-white shadow-lg transition-transform hover:scale-[1.02] active:scale-95"
-            style={{ background: 'linear-gradient(135deg,#0077cc 0%,#005ea3 100%)' }}>
+          <button
+            onClick={() => openAdd(new Date())}
+            className="inline-flex items-center gap-2 px-5 py-3 text-white text-[11px] font-bold uppercase tracking-widest rounded-lg shadow-[0_4px_14px_rgba(0,94,163,0.25)] hover:-translate-y-0.5 transition-all"
+            style={primaryStyle}
+          >
             <Plus className="h-4 w-4" />
-            Add Event
+            Add Entry
           </button>
-        </section>
+        </div>
 
-        {/* ── Controls Row ── */}
-        <section className="flex flex-col sm:flex-row justify-between items-center gap-4 bg-[#f5f3f3] dark:bg-gray-800 p-4 rounded-xl border border-[#c0c7d4] dark:border-gray-700/30 dark:border-gray-700/80 shadow-sm">
-          {/* Month Nav */}
+        {/* Month bar */}
+        <div className={`${cardCls} p-3 sm:p-4 flex items-center justify-between`}>
+          <button
+            onClick={() => setViewDate(new Date(viewDate.getFullYear(), viewDate.getMonth() - 1, 1))}
+            className="w-9 h-9 rounded-md flex items-center justify-center text-[#005ea3] hover:bg-[#005ea3]/[0.06] transition-colors"
+          >
+            <ChevronLeft className="h-5 w-5" />
+          </button>
           <div className="flex items-center gap-3">
-            <div className="flex items-center bg-white dark:bg-[#1f2937] border border-[#c0c7d4] dark:border-gray-700/40 dark:border-gray-700/80 rounded-lg overflow-hidden">
-              <button onClick={goToPrev}
-                className="p-2 text-[#005ea3] hover:bg-[#efeded] dark:bg-gray-700 transition-colors">
-                <ChevronLeft className="h-4 w-4" />
-              </button>
-              <span className="px-5 py-1.5 font-semibold text-[#005ea3] text-sm whitespace-nowrap">
-                {monthLabel}
-              </span>
-              <button onClick={goToNext}
-                className="p-2 text-[#005ea3] hover:bg-[#efeded] dark:bg-gray-700 transition-colors">
-                <ChevronRight className="h-4 w-4" />
-              </button>
-            </div>
-            <button onClick={goToToday}
-              className="px-4 py-2 bg-white dark:bg-[#1f2937] border border-[#c0c7d4] dark:border-gray-700/40 dark:border-gray-700/80 rounded-lg text-sm font-bold text-[#404752] dark:text-gray-200 hover:text-[#005ea3] dark:hover:text-[#a0c9ff] transition-colors">
+            <h2 className="font-bold text-lg text-[#1b1c1c] dark:text-white">{monthLabel}</h2>
+            <button
+              onClick={() => setViewDate(new Date())}
+              className="text-[10px] font-bold uppercase tracking-widest text-[#005ea3] border border-[#005ea3]/20 rounded-md px-2.5 py-1 hover:bg-[#005ea3]/[0.06] transition-colors"
+            >
               Today
             </button>
           </div>
+          <button
+            onClick={() => setViewDate(new Date(viewDate.getFullYear(), viewDate.getMonth() + 1, 1))}
+            className="w-9 h-9 rounded-md flex items-center justify-center text-[#005ea3] hover:bg-[#005ea3]/[0.06] transition-colors"
+          >
+            <ChevronRight className="h-5 w-5" />
+          </button>
+        </div>
 
-          {/* View Toggle */}
-          <div className="flex bg-white dark:bg-[#1f2937] border border-[#c0c7d4] dark:border-gray-700/40 dark:border-gray-700/80 rounded-lg overflow-hidden p-1 gap-1">
-            {(['Month', 'Week', 'Day'] as ViewMode[]).map(v => (
-              <button key={v}
-                onClick={() => setViewMode(v)}
-                className={`px-5 py-1.5 rounded-md text-sm font-bold transition-all ${viewMode === v
-                    ? 'bg-[#0077cc] text-white shadow-sm'
-                    : 'text-[#404752] dark:text-gray-200 hover:text-[#005ea3] dark:hover:text-[#a0c9ff]'
-                  }`}>
-                {v}
-              </button>
-            ))}
-          </div>
-        </section>
-
-        {/* ── Calendar Grid ── */}
-        <section className="bg-white dark:bg-[#1f2937] rounded-2xl shadow-lg border border-[#c0c7d4] dark:border-gray-700/30 dark:border-gray-700/80 overflow-hidden">
-          {/* Day-name headers */}
-          <div className="grid grid-cols-7 border-b border-[#c0c7d4] dark:border-gray-700/20 dark:border-gray-700/80 bg-[#f5f3f3]/60 dark:bg-gray-80060">
-            {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(d => (
-              <div key={d} className="py-3 text-center text-[10px] font-bold tracking-widest uppercase text-[#404752] dark:text-gray-200/60 dark:text-gray-400">
-                {d}
+        {/* Grid */}
+        <div className={`${cardCls} p-2 sm:p-3`}>
+          {/* Weekday header */}
+          <div className="grid grid-cols-7 mb-1">
+            {WEEKDAYS.map((w) => (
+              <div key={w} className="text-center text-[9px] sm:text-[10px] font-bold uppercase tracking-widest text-[#707783] dark:text-gray-400 py-2">
+                <span className="hidden sm:inline">{w}</span>
+                <span className="sm:hidden">{w[0]}</span>
               </div>
             ))}
           </div>
 
-          {/* Day cells */}
-          <div className="grid grid-cols-7">
-            {allDays.map((day, idx) => {
-              const events = day ? MOCK_EVENTS[day] ?? [] : [];
-              const todayCell = day !== null && isToday(day);
-
-              return (
-                <div
-                  key={idx}
-                  className={[
-                    'min-h-[100px] sm:min-h-[120px] p-2 border-r border-b border-[#c0c7d4] dark:border-gray-700/20 dark:border-gray-700/80 transition-colors duration-150',
-                    day
-                      ? todayCell
-                        ? 'bg-[#005ea3]/5 dark:bg-[#a0c9ff]/10 ring-2 ring-inset ring-[#005ea3]'
-                        : 'hover:bg-[#f5f3f3] dark:bg-gray-800 cursor-pointer'
-                      : 'bg-[#efeded]/30 dark:bg-gray-70030',
-                    // remove right border on last col
-                    (idx + 1) % 7 === 0 ? 'border-r-0' : '',
-                  ].join(' ')}
-                >
-                  {day && (
-                    <>
-                      {/* Day number */}
-                      <div className="flex items-center justify-between mb-1.5">
-                        <span className={`text-xs font-bold ${todayCell ? 'text-[#005ea3]' : 'text-[#1b1c1c] dark:text-white'}`}>
-                          {day}
-                        </span>
-                        {todayCell && (
-                          <span className="text-[9px] font-bold text-[#005ea3] bg-[#005ea3]/10 dark:bg-[#a0c9ff]/20 px-1.5 py-0.5 rounded">
-                            TODAY
-                          </span>
-                        )}
-                      </div>
-
-                      {/* Events */}
-                      <div className="space-y-1 overflow-hidden">
-                        {events.map((ev, i) => (
-                          <div
-                            key={i}
-                            title={ev.employer ? `${ev.title}${ev.time ? ' ' + ev.time : ''} — ${ev.employer}` : ev.title}
-                            className={`text-[10px] px-1.5 py-0.5 rounded font-bold truncate shadow-sm ${EVENT_STYLES[ev.type]}`}
-                          >
-                            {ev.time ? `${ev.title}: ${ev.time}` : ev.title}
-                          </div>
-                        ))}
-                      </div>
-                    </>
-                  )}
-                  {/* Faded prev-month numbers */}
-                  {!day && idx < 7 && (
-                    <span className="text-xs text-[#404752] dark:text-gray-200/30 dark:text-gray-500 dark:text-gray-400">
-                      {new Date(year, month, idx - firstDayOfWeek + 1).getDate() ||
-                        new Date(year, month, 0).getDate() - (firstDayOfWeek - idx - 1)}
-                    </span>
-                  )}
-                </div>
-              );
-            })}
-          </div>
-        </section>
-
-        {/* ── Bottom Widgets ── */}
-        <section className="grid grid-cols-1 lg:grid-cols-3 gap-6 pb-6">
-
-          {/* Monthly Utilisation Bar Chart */}
-          <div className="lg:col-span-2 bg-white dark:bg-[#1f2937] p-6 rounded-2xl border border-[#c0c7d4] dark:border-gray-700/20 dark:border-gray-700/80 shadow-sm">
-            <h3 className="flex items-center gap-2 text-base font-bold text-[#005ea3] mb-4">
-              <TrendingUp className="h-5 w-5" />
-              Monthly Utilisation
-            </h3>
-            <div className="flex items-end justify-between h-36 gap-2">
-              {BAR_HEIGHTS.map((h, i) => (
-                <div key={i} className="flex flex-col items-center gap-1 w-full">
+          {loading ? (
+            <div className="flex items-center justify-center min-h-[300px] text-gray-400">
+              <Loader2 className="h-6 w-6 animate-spin" />
+            </div>
+          ) : (
+            <div className="grid grid-cols-7 gap-1 sm:gap-1.5">
+              {cells.map((d, i) => {
+                const inMonth = d.getMonth() === viewDate.getMonth();
+                const isToday = isSameDay(d, today);
+                const ds = dayShifts(d);
+                const de = dayEntries(d);
+                const markers = [
+                  ...ds.map((s) => ({ kind: 'shift' as const, s })),
+                  ...de.map((e) => ({ kind: 'entry' as const, e })),
+                ];
+                return (
                   <div
-                    className={`w-full rounded-t-md transition-all hover:opacity-90 ${i === 3
-                        ? 'bg-gradient-to-t from-[#005ea3] to-[#0077cc]'
-                        : 'bg-[#efeded] dark:bg-gray-700 hover:bg-[#e4e2e2]'
-                      }`}
-                    style={{ height: h }}
-                  />
-                </div>
-              ))}
-            </div>
-            <div className="flex justify-between mt-2">
-              {WEEKS.map(w => (
-                <span key={w} className="text-[10px] font-bold tracking-widest uppercase text-[#404752] dark:text-gray-200/50 dark:text-gray-400 w-full text-center">
-                  {w}
-                </span>
-              ))}
-            </div>
-          </div>
+                    key={i}
+                    onClick={() => setDayPopup(d)}
+                    className={`group relative min-h-[78px] sm:min-h-[108px] rounded-md border p-1 sm:p-1.5 transition-colors cursor-pointer hover:border-[#005ea3]/25 ${
+                      inMonth
+                        ? 'bg-white dark:bg-[#1f2937] border-[#005ea3]/[0.06] dark:border-white/5'
+                        : 'bg-gray-50/60 dark:bg-white/[0.02] border-transparent'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between">
+                      <span
+                        className={`text-[11px] sm:text-xs font-bold w-6 h-6 flex items-center justify-center rounded-full ${
+                          isToday
+                            ? 'text-white'
+                            : inMonth
+                            ? 'text-[#1b1c1c] dark:text-gray-200'
+                            : 'text-gray-300 dark:text-gray-600'
+                        }`}
+                        style={isToday ? primaryStyle : undefined}
+                      >
+                        {d.getDate()}
+                      </span>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          openAdd(d);
+                        }}
+                        aria-label="Add entry"
+                        className="w-5 h-5 rounded-md flex items-center justify-center text-[#005ea3] bg-[#005ea3]/[0.08] hover:bg-[#005ea3]/15 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity"
+                      >
+                        <Plus className="h-3.5 w-3.5" />
+                      </button>
+                    </div>
 
-          {/* Upcoming Earnings Card */}
-          <div
-            className="relative overflow-hidden p-6 rounded-2xl shadow-xl flex flex-col justify-between text-white"
-            style={{ background: 'linear-gradient(135deg,#0077cc 0%,#005ea3 100%)' }}
-          >
-            {/* Atmospheric glow */}
-            <div className="absolute -right-16 -top-16 w-56 h-56 bg-white dark:bg-[#1f2937]/10 rounded-full blur-3xl pointer-events-none" />
-
-            <div className="relative">
-              <p className="text-[10px] font-bold tracking-widest uppercase opacity-80 mb-1">
-                Upcoming Earnings
-              </p>
-              <h4 className="text-3xl font-extrabold font-mono">$2,450.80</h4>
-              <p className="text-xs opacity-80 mt-2 leading-relaxed">
-                Estimated total for {currentDate.toLocaleDateString('en-GB', { month: 'long' })} based on scheduled shifts.
-              </p>
-            </div>
-
-            {/* Upcoming shifts list */}
-            <div className="relative mt-5 space-y-2">
-              {UPCOMING.map((ev, i) => (
-                <div key={i} className="flex items-center gap-3 bg-white dark:bg-[#1f2937]/15 backdrop-blur-sm rounded-lg px-3 py-2">
-                  <div className="w-1.5 h-1.5 rounded-full bg-[#42e09c] flex-shrink-0" />
-                  <div className="min-w-0">
-                    <p className="text-xs font-bold truncate">{ev.title}</p>
-                    <p className="text-[10px] opacity-70">{ev.date}</p>
+                    <div className="mt-1 space-y-1">
+                      {markers.slice(0, 3).map((m, j) =>
+                        m.kind === 'shift' ? (
+                          <button
+                            key={`s${j}`}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              openShift(m.s);
+                            }}
+                            className="w-full flex items-center gap-1 px-1.5 py-0.5 rounded text-white text-[9px] sm:text-[10px] font-semibold truncate hover:opacity-90"
+                            style={primaryStyle}
+                          >
+                            <Clock className="h-2.5 w-2.5 flex-shrink-0" />
+                            <span className="truncate">{m.s.shiftName || m.s.shiftType || 'Shift'}</span>
+                          </button>
+                        ) : (
+                          <button
+                            key={`e${j}`}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setDelTarget(m.e);
+                            }}
+                            className="w-full flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] sm:text-[10px] font-medium truncate bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300 hover:opacity-90"
+                            title={m.e.title}
+                          >
+                            <span className="w-1 h-1 rounded-full bg-emerald-500 flex-shrink-0" />
+                            <span className="truncate">{m.e.title}</span>
+                          </button>
+                        )
+                      )}
+                      {markers.length > 3 && (
+                        <p className="text-[9px] text-[#707783] dark:text-gray-400 pl-1">
+                          +{markers.length - 3} more
+                        </p>
+                      )}
+                    </div>
                   </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+
+        {/* Legend */}
+        <div className="flex items-center gap-4 text-[10px] font-bold uppercase tracking-widest text-[#707783] dark:text-gray-400">
+          <span className="flex items-center gap-1.5">
+            <span className="w-3 h-3 rounded" style={primaryStyle} /> Shift
+          </span>
+          <span className="flex items-center gap-1.5">
+            <span className="w-3 h-3 rounded bg-emerald-400" /> Note
+          </span>
+        </div>
+      </div>
+
+      {/* Add entry modal */}
+      <Modal
+        open={addOpen}
+        onClose={() => setAddOpen(false)}
+        title="Add to Calendar"
+        footer={
+          <>
+            <button
+              onClick={() => setAddOpen(false)}
+              className="flex-1 py-3 text-[11px] font-bold uppercase tracking-widest text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors rounded-md border border-gray-200 dark:border-gray-700"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={submitAdd}
+              disabled={saving}
+              className="flex-[2] inline-flex items-center justify-center gap-2 px-5 py-3 text-white text-[11px] font-bold uppercase tracking-widest rounded-lg shadow-[0_4px_14px_rgba(0,94,163,0.25)] disabled:opacity-60"
+              style={primaryStyle}
+            >
+              {saving ? 'Saving…' : 'Add Entry'}
+            </button>
+          </>
+        }
+      >
+        <div className="space-y-5">
+          <div>
+            <label className={labelCls}>Date</label>
+            <input type="date" value={addDate} onChange={(e) => setAddDate(e.target.value)} className={inputCls} />
+          </div>
+          <div>
+            <div className="flex items-center justify-between mb-2">
+              <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Title (custom)</label>
+              <span className={`text-[10px] font-mono ${wordCount > 15 ? 'text-red-500' : 'text-gray-400'}`}>
+                {wordCount}/15 words
+              </span>
+            </div>
+            <input
+              type="text"
+              placeholder="e.g. Gym session, Holiday…"
+              value={addTitle}
+              onChange={(e) => setAddTitle(e.target.value)}
+              className={inputCls}
+            />
+          </div>
+          {addShiftOptions.length > 0 && (
+            <div>
+              <label className={labelCls}>Link to a shift (optional)</label>
+              <select value={addShiftId} onChange={(e) => setAddShiftId(e.target.value)} className={inputCls}>
+                <option value="">None</option>
+                {addShiftOptions.map((s) => (
+                  <option key={s.id} value={s.id}>
+                    {s.shiftType ?? 'Shift'} · {fmtTime(s.startTime)}–{fmtTime(s.endTime)}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+        </div>
+      </Modal>
+
+      {/* Day detail popup */}
+      <Modal
+        open={!!dayPopup}
+        onClose={() => setDayPopup(null)}
+        title={
+          dayPopup
+            ? dayPopup.toLocaleDateString('en-GB', {
+                weekday: 'long',
+                day: 'numeric',
+                month: 'long',
+                year: 'numeric',
+              })
+            : 'Day'
+        }
+        maxWidth="max-w-md"
+      >
+        {dayPopup && (
+          <div className="space-y-5">
+            {/* Shifts */}
+            <div>
+              <p className="text-[10px] font-bold uppercase tracking-widest text-[#707783] dark:text-gray-400 mb-2">
+                Shifts ({dayShifts(dayPopup).length})
+              </p>
+              {dayShifts(dayPopup).length === 0 ? (
+                <p className="text-xs text-gray-400">No shifts on this day.</p>
+              ) : (
+                <div className="space-y-2">
+                  {dayShifts(dayPopup).map((s) => (
+                    <button
+                      key={s.id}
+                      onClick={() => {
+                        setDayPopup(null);
+                        openShift(s);
+                      }}
+                      className="w-full text-left rounded-md border border-[#005ea3]/[0.08] dark:border-white/10 p-3 hover:bg-[#005ea3]/[0.04] transition-colors flex items-center gap-3"
+                    >
+                      <div className="w-9 h-9 rounded-md flex items-center justify-center flex-shrink-0" style={primaryStyle}>
+                        <Clock className="h-4 w-4 text-white" />
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <p className="font-semibold text-sm text-[#1b1c1c] dark:text-white truncate">
+                          {s.shiftName || `${s.shiftType ?? ''} shift`.trim() || 'Shift'}
+                        </p>
+                        <p className="text-xs text-[#707783] dark:text-gray-400 font-mono">
+                          {fmtTime(s.startTime)} – {fmtTime(s.endTime)} · {s.totalHours}h
+                        </p>
+                      </div>
+                      <ChevronRight className="h-4 w-4 text-gray-400 flex-shrink-0" />
+                    </button>
+                  ))}
                 </div>
-              ))}
-              <button className="w-full mt-2 bg-white dark:bg-[#1f2937]/20 hover:bg-white dark:bg-[#1f2937]/30 transition-colors py-2 rounded-lg text-xs font-bold flex items-center justify-center gap-1">
-                View Details <ChevronRight className="h-3.5 w-3.5" />
-              </button>
+              )}
+            </div>
+
+            {/* Notes */}
+            <div>
+              <div className="flex items-center justify-between mb-2">
+                <p className="text-[10px] font-bold uppercase tracking-widest text-[#707783] dark:text-gray-400">
+                  Notes ({dayEntries(dayPopup).length})
+                </p>
+                <button
+                  onClick={() => {
+                    const d = dayPopup;
+                    setDayPopup(null);
+                    openAdd(d);
+                  }}
+                  className="inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-widest text-[#005ea3] hover:underline"
+                >
+                  <Plus className="h-3 w-3" /> Add
+                </button>
+              </div>
+              {dayEntries(dayPopup).length === 0 ? (
+                <p className="text-xs text-gray-400">No notes yet.</p>
+              ) : (
+                <div className="space-y-2">
+                  {dayEntries(dayPopup).map((e) => (
+                    <div
+                      key={e.id}
+                      className="flex items-center justify-between gap-2 rounded-md border border-emerald-200/60 dark:border-emerald-900/40 bg-emerald-50/50 dark:bg-emerald-900/10 p-3"
+                    >
+                      <span className="flex items-center gap-2 text-sm text-[#1b1c1c] dark:text-white min-w-0">
+                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 flex-shrink-0" />
+                        <span className="truncate">{e.title}</span>
+                      </span>
+                      <button
+                        onClick={() => {
+                          setDayPopup(null);
+                          setDelTarget(e);
+                        }}
+                        className="text-red-400 hover:text-red-500 flex-shrink-0"
+                        aria-label="Remove"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
-        </section>
+        )}
+      </Modal>
 
-      </div>
+      {/* Shift popup — who's clocked in */}
+      <Modal
+        open={!!shiftPopup}
+        onClose={() => setShiftPopup(null)}
+        title="Shift Details"
+        maxWidth="max-w-md"
+      >
+        {shiftPopup && (
+          <div className="space-y-4">
+            <div className="rounded-md bg-[#005ea3]/[0.04] dark:bg-white/5 border border-[#005ea3]/[0.06] dark:border-white/5 p-4 flex items-center gap-3">
+              <div className="w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0" style={primaryStyle}>
+                <CalendarDays className="h-5 w-5 text-white" />
+              </div>
+              <div className="min-w-0">
+                <p className="font-bold text-sm text-[#1b1c1c] dark:text-white truncate">
+                  {shiftPopup.shiftName || `${shiftPopup.shiftType ?? ''} shift`.trim()}
+                </p>
+                <p className="text-xs text-[#707783] dark:text-gray-400 font-mono">
+                  {shiftPopup.shiftType ? `${shiftPopup.shiftType} · ` : ''}
+                  {fmtTime(shiftPopup.startTime)} – {fmtTime(shiftPopup.endTime)} · {shiftPopup.totalHours}h
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2 text-sm font-bold text-[#1b1c1c] dark:text-white">
+              <Users className="h-4 w-4 text-[#005ea3]" />
+              Currently clocked in
+              <span className="ml-auto font-mono text-[#005ea3] dark:text-[#a0c9ff]">
+                {loadingClocked ? '…' : clockedIn.length}
+              </span>
+            </div>
+
+            {loadingClocked ? (
+              <div className="flex justify-center py-6 text-gray-400">
+                <Loader2 className="h-5 w-5 animate-spin" />
+              </div>
+            ) : clockedIn.length === 0 ? (
+              <p className="text-sm text-gray-400 py-4 text-center">No one is clocked in for this shift right now.</p>
+            ) : (
+              <div className="space-y-2">
+                {clockedIn.map((c) => (
+                  <div key={c.id} className="flex items-center justify-between rounded-md border border-[#005ea3]/[0.08] dark:border-white/10 p-3">
+                    <span className="font-semibold text-sm text-[#1b1c1c] dark:text-white">
+                      {c.salary?.employer?.employerName ?? 'Employee'}
+                    </span>
+                    <span className="text-xs font-mono text-emerald-600 dark:text-emerald-400">
+                      ● since {fmtTime(c.clockInTime)}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+      </Modal>
+
+      <ConfirmDialog
+        open={!!delTarget}
+        title="Remove entry?"
+        message={`Remove "${delTarget?.title}" from the calendar?`}
+        confirmLabel="Remove"
+        loading={deleting}
+        onConfirm={confirmDelete}
+        onCancel={() => setDelTarget(null)}
+      />
     </DashboardLayout>
   );
 }

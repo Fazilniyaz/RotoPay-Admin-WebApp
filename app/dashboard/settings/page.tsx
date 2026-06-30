@@ -1,254 +1,259 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
+import { toast } from 'sonner';
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Switch } from '@/components/ui/switch';
-import { Separator } from '@/components/ui/separator';
 import { ThemeToggle } from '@/components/ThemeToggle';
-import { authStore } from '@/store/authStore';
 import { useAuth } from '@/hooks/useAuth';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { LogOut, User } from 'lucide-react';
-import { getInitials } from '@/lib/utils';
+import { User, Globe, Loader2, LogOut, Mail, Check } from 'lucide-react';
+import { getSettings, updateSettings } from '@/lib/services/settings';
+import { DateFormat, TimeFormat } from '@/store/settingsStore';
+import { currencySymbol, CURRENCIES } from '@/lib/format';
+
+const GRADIENT = 'linear-gradient(135deg, #005ea3 0%, #006d30 100%)';
+const primaryStyle = { background: GRADIENT };
+const cardCls =
+  'bg-white dark:bg-[#1f2937] rounded-[10px] border border-[rgba(0,94,163,0.08)] dark:border-[rgba(160,201,255,0.08)] shadow-[0_4px_6px_rgba(0,123,210,0.06),0_2px_4px_rgba(0,123,210,0.04)]';
+const labelCls = 'block text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2';
+const inputCls =
+  'w-full bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-md px-4 py-3 focus:border-[#005ea3] focus:ring-2 focus:ring-[#005ea3]/10 outline-none transition-all text-sm';
+
+const DATE_FORMATS: DateFormat[] = ['DD/MM/YYYY', 'MM/DD/YYYY', 'YYYY-MM-DD'];
+const TIME_FORMATS: TimeFormat[] = ['24h', '12h'];
+
+const initials = (name: string) =>
+  name.split(' ').map((w) => w[0]).filter(Boolean).slice(0, 2).join('').toUpperCase() || 'U';
+
+const localeFor = (f: string) => (f === 'MM/DD/YYYY' ? 'en-US' : f === 'YYYY-MM-DD' ? 'sv-SE' : 'en-GB');
 
 export default function SettingsPage() {
   const router = useRouter();
-  const { user } = authStore();
   const { logout } = useAuth();
-  const [isSaving, setIsSaving] = useState(false);
+
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [email, setEmail] = useState('');
+  const [displayName, setDisplayName] = useState('');
+  const [currency, setCurrency] = useState('GBP');
+  const [dateFormat, setDateFormat] = useState<DateFormat>('DD/MM/YYYY');
+  const [timeFormat, setTimeFormat] = useState<TimeFormat>('24h');
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    try {
+      const p = await getSettings();
+      setEmail(p.profile.email);
+      setDisplayName(p.profile.displayName);
+      setCurrency(p.settings.currency);
+      setDateFormat(p.settings.dateFormat);
+      setTimeFormat(p.settings.timeFormat);
+    } catch {
+      toast.error('Failed to load settings');
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    load();
+  }, [load]);
+
+  const save = async () => {
+    if (!displayName.trim() || displayName.trim().length < 2) {
+      toast.error('Display name must be at least 2 characters');
+      return;
+    }
+    setSaving(true);
+    try {
+      await updateSettings({
+        displayName: displayName.trim(),
+        currency,
+        dateFormat,
+        timeFormat,
+      });
+      toast.success('Settings saved');
+    } catch (err: any) {
+      toast.error(err?.response?.data?.message || 'Save failed');
+    } finally {
+      setSaving(false);
+    }
+  };
 
   const handleLogout = async () => {
     await logout();
     router.push('/auth/login');
   };
 
-  const initials = user ? getInitials(user.displayName) : 'U';
+  // Live preview from the current (unsaved) selections.
+  const now = new Date();
+  const previewDate = now.toLocaleDateString(localeFor(dateFormat), {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+  });
+  const previewTime = now.toLocaleTimeString('en-GB', {
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: timeFormat === '12h',
+  });
+  const previewMoney = `${currencySymbol(currency)}1,234.50`;
 
   return (
     <DashboardLayout>
-      <div className="space-y-6 max-w-2xl">
-        {/* Header */}
+      <div className="space-y-6 max-w-3xl">
         <div>
-          <h1 className="text-3xl font-bold">Settings</h1>
-          <p className="text-muted-foreground">Manage your account preferences</p>
+          <h1 className="text-3xl font-extrabold text-[#005ea3]">Settings</h1>
+          <p className="text-sm text-gray-400 mt-0.5">Your profile and global preferences</p>
         </div>
 
-        {/* Profile Section */}
-        <Card className="border-border/50">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <User className="h-5 w-5" />
-              Profile
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-6">
-            {/* Avatar */}
-            <div className="flex items-center gap-4">
-              <Avatar className="h-16 w-16">
-                <AvatarImage src={user?.profilePicture} alt={user?.displayName} />
-                <AvatarFallback className="bg-gradient-to-br from-primary to-accent text-white font-bold">
-                  {initials}
-                </AvatarFallback>
-              </Avatar>
-              <Button variant="outline">Change Avatar</Button>
-            </div>
-
-            <Separator />
-
-            {/* Profile Form */}
-            <div className="space-y-4">
-              <div>
-                <Label htmlFor="displayName" className="font-semibold">
-                  Display Name
-                </Label>
-                <Input
-                  id="displayName"
-                  defaultValue={user?.displayName}
-                  disabled
-                  className="mt-2"
-                />
+        {loading ? (
+          <div className="flex items-center justify-center min-h-[300px] text-gray-400">
+            <Loader2 className="h-6 w-6 animate-spin" />
+          </div>
+        ) : (
+          <>
+            {/* Profile */}
+            <div className={`${cardCls} p-5 sm:p-6`}>
+              <div className="flex items-center gap-2 mb-5">
+                <div className="w-9 h-9 rounded-lg flex items-center justify-center" style={primaryStyle}>
+                  <User className="h-4 w-4 text-white" />
+                </div>
+                <h2 className="font-bold text-[#1b1c1c] dark:text-white">Profile</h2>
               </div>
-              <div>
-                <Label htmlFor="email" className="font-semibold">
-                  Email
-                </Label>
-                <Input
-                  id="email"
-                  type="email"
-                  defaultValue={user?.email}
-                  disabled
-                  className="mt-2"
-                />
+
+              <div className="flex items-center gap-4 mb-6">
+                <div
+                  className="w-16 h-16 rounded-[10px] flex items-center justify-center text-white text-xl font-bold flex-shrink-0"
+                  style={primaryStyle}
+                >
+                  {initials(displayName || 'U')}
+                </div>
+                <p className="text-xs text-gray-400">
+                  Profile photo changes aren&apos;t available here yet.
+                </p>
+              </div>
+
+              <div className="space-y-5">
+                <div>
+                  <label className={labelCls}>Display Name</label>
+                  <input
+                    type="text"
+                    value={displayName}
+                    onChange={(e) => setDisplayName(e.target.value)}
+                    className={inputCls}
+                    placeholder="Your name"
+                  />
+                </div>
+                <div>
+                  <label className={labelCls}>Email</label>
+                  <div className="relative">
+                    <Mail className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                    <input
+                      type="email"
+                      value={email}
+                      disabled
+                      className={`${inputCls} pl-11 opacity-60 cursor-not-allowed`}
+                    />
+                  </div>
+                  <p className="text-[11px] text-gray-400 mt-1.5">Email can&apos;t be changed here.</p>
+                </div>
               </div>
             </div>
-          </CardContent>
-        </Card>
 
-        {/* Preferences Section */}
-        <Card className="border-border/50">
-          <CardHeader>
-            <CardTitle>Preferences</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-6">
-            {/* Theme */}
-            <div className="flex items-center justify-between">
-              <div>
-                <Label className="font-semibold">Theme</Label>
-                <p className="text-sm text-muted-foreground mt-1">Choose your preferred theme</p>
+            {/* Preferences */}
+            <div className={`${cardCls} p-5 sm:p-6`}>
+              <div className="flex items-center gap-2 mb-5">
+                <div className="w-9 h-9 rounded-lg flex items-center justify-center" style={primaryStyle}>
+                  <Globe className="h-4 w-4 text-white" />
+                </div>
+                <h2 className="font-bold text-[#1b1c1c] dark:text-white">Global Preferences</h2>
               </div>
-              <ThemeToggle />
-            </div>
 
-            <Separator />
-
-            {/* Currency */}
-            <div>
-              <Label htmlFor="currency" className="font-semibold">
-                Currency
-              </Label>
-              <Select defaultValue="GBP">
-                <SelectTrigger id="currency" className="mt-2">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="GBP">GBP (£)</SelectItem>
-                  <SelectItem value="EUR">EUR (€)</SelectItem>
-                  <SelectItem value="USD">USD ($)</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            <Separator />
-
-            {/* Language */}
-            <div>
-              <Label htmlFor="language" className="font-semibold">
-                Language
-              </Label>
-              <Select defaultValue="en">
-                <SelectTrigger id="language" className="mt-2">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="en">English</SelectItem>
-                  <SelectItem value="es">Español</SelectItem>
-                  <SelectItem value="fr">Français</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            <Separator />
-
-            {/* Date Format */}
-            <div>
-              <Label htmlFor="dateFormat" className="font-semibold">
-                Date Format
-              </Label>
-              <Select defaultValue="DD/MM/YYYY">
-                <SelectTrigger id="dateFormat" className="mt-2">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="DD/MM/YYYY">DD/MM/YYYY</SelectItem>
-                  <SelectItem value="MM/DD/YYYY">MM/DD/YYYY</SelectItem>
-                  <SelectItem value="YYYY-MM-DD">YYYY-MM-DD</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            <Separator />
-
-            {/* Time Format */}
-            <div>
-              <Label htmlFor="timeFormat" className="font-semibold">
-                Time Format
-              </Label>
-              <Select defaultValue="24h">
-                <SelectTrigger id="timeFormat" className="mt-2">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="24h">24 Hour (14:30)</SelectItem>
-                  <SelectItem value="12h">12 Hour (2:30 PM)</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Notifications Section */}
-        <Card className="border-border/50">
-          <CardHeader>
-            <CardTitle>Notifications</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <Label className="font-semibold">Shift Reminders</Label>
-                <p className="text-sm text-muted-foreground mt-1">Get notified before your shifts</p>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
+                <div>
+                  <label className={labelCls}>Currency</label>
+                  <select value={currency} onChange={(e) => setCurrency(e.target.value)} className={inputCls}>
+                    {CURRENCIES.map((c) => (
+                      <option key={c} value={c}>
+                        {c} ({currencySymbol(c).trim()})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className={labelCls}>Date Format</label>
+                  <select
+                    value={dateFormat}
+                    onChange={(e) => setDateFormat(e.target.value as DateFormat)}
+                    className={inputCls}
+                  >
+                    {DATE_FORMATS.map((f) => (
+                      <option key={f} value={f}>
+                        {f}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className={labelCls}>Time Format</label>
+                  <select
+                    value={timeFormat}
+                    onChange={(e) => setTimeFormat(e.target.value as TimeFormat)}
+                    className={inputCls}
+                  >
+                    {TIME_FORMATS.map((f) => (
+                      <option key={f} value={f}>
+                        {f === '24h' ? '24-hour' : '12-hour'}
+                      </option>
+                    ))}
+                  </select>
+                </div>
               </div>
-              <Switch defaultChecked />
-            </div>
 
-            <Separator />
-
-            <div className="flex items-center justify-between">
-              <div>
-                <Label className="font-semibold">Event Reminders</Label>
-                <p className="text-sm text-muted-foreground mt-1">Get notified about scheduled events</p>
+              {/* Live preview */}
+              <div className="mt-5 rounded-md bg-[#005ea3]/[0.04] dark:bg-white/5 border border-[#005ea3]/[0.06] dark:border-white/5 p-4">
+                <p className="text-[10px] font-bold uppercase tracking-widest text-[#707783] dark:text-gray-400 mb-2">
+                  Preview
+                </p>
+                <div className="flex flex-wrap gap-x-6 gap-y-1 font-mono text-sm text-[#1b1c1c] dark:text-white">
+                  <span>{previewMoney}</span>
+                  <span>{previewDate}</span>
+                  <span>{previewTime}</span>
+                </div>
               </div>
-              <Switch defaultChecked />
-            </div>
 
-            <Separator />
-
-            <div className="flex items-center justify-between">
-              <div>
-                <Label className="font-semibold">Payment Notifications</Label>
-                <p className="text-sm text-muted-foreground mt-1">Get notified when you receive payments</p>
+              {/* Theme */}
+              <div className="mt-5 flex items-center justify-between border-t border-gray-100 dark:border-gray-700 pt-4">
+                <div>
+                  <p className="text-sm font-semibold text-[#1b1c1c] dark:text-white">Appearance</p>
+                  <p className="text-[11px] text-gray-400">Light / dark theme</p>
+                </div>
+                <ThemeToggle />
               </div>
-              <Switch defaultChecked />
             </div>
-          </CardContent>
-        </Card>
 
-        {/* Account Section */}
-        <Card className="border-destructive/50 bg-destructive/5">
-          <CardHeader>
-            <CardTitle className="text-destructive">Account</CardTitle>
-            <CardDescription>Manage your account access</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <Button
-              onClick={handleLogout}
-              variant="outline"
-              className="w-full text-destructive hover:text-destructive"
-            >
-              <LogOut className="mr-2 h-4 w-4" />
-              Logout
-            </Button>
-            <Button variant="outline" className="w-full text-destructive hover:text-destructive">
-              Logout All Devices
-            </Button>
-          </CardContent>
-        </Card>
-
-        {/* Save Button */}
-        <div className="flex gap-2">
-          <Button
-            onClick={() => setIsSaving(true)}
-            className="bg-gradient-to-r from-primary to-accent text-white"
-            disabled={isSaving}
-          >
-            {isSaving ? 'Saving...' : 'Save Changes'}
-          </Button>
-        </div>
+            {/* Actions */}
+            <div className="flex flex-col sm:flex-row gap-3 sm:justify-between">
+              <button
+                onClick={handleLogout}
+                className="inline-flex items-center justify-center gap-2 px-5 py-3 rounded-lg text-[11px] font-bold uppercase tracking-widest text-red-500 border border-red-200 dark:border-red-900/50 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
+              >
+                <LogOut className="h-4 w-4" />
+                Log out
+              </button>
+              <button
+                onClick={save}
+                disabled={saving}
+                className="inline-flex items-center justify-center gap-2 px-8 py-3 text-white text-[11px] font-bold uppercase tracking-widest rounded-lg shadow-[0_4px_14px_rgba(0,94,163,0.25)] hover:-translate-y-0.5 transition-all disabled:opacity-60 disabled:hover:translate-y-0"
+                style={primaryStyle}
+              >
+                <Check className="h-4 w-4" />
+                {saving ? 'Saving…' : 'Save Changes'}
+              </button>
+            </div>
+          </>
+        )}
       </div>
     </DashboardLayout>
   );

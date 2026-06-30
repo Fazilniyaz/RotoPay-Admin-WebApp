@@ -241,7 +241,7 @@ export default function DashboardPage() {
       <DashboardLayout>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 24, marginBottom: 32 }}>
           {[...Array(4)].map((_, i) => (
-            <div key={i} style={{ height: 120, borderRadius: 16, background: '#efeded', animation: 'pulse 1.5s infinite' }} />
+            <div key={i} style={{ height: 120, borderRadius: 10, background: '#efeded', animation: 'pulse 1.5s infinite' }} />
           ))}
         </div>
       </DashboardLayout>
@@ -295,7 +295,7 @@ export default function DashboardPage() {
           background: linear-gradient(135deg, #005ea3 0%, #006d30 100%);
           color: white;
           border: none;
-          border-radius: 14px;
+          border-radius: 9px;
           padding: 16px 12px;
           font-family: 'Montserrat', sans-serif;
           font-size: 14px;
@@ -320,7 +320,7 @@ export default function DashboardPage() {
         }
         .rp-stat-card {
           background: white;
-          border-radius: 16px;
+          border-radius: 10px;
           padding: 24px;
           border: 1px solid rgba(0, 94, 163, 0.08);
           box-shadow: 0 4px 6px rgba(0, 123, 210, 0.06), 0 2px 4px rgba(0, 123, 210, 0.04);
@@ -357,7 +357,7 @@ export default function DashboardPage() {
         .rp-stat-icon {
           width: 40px;
           height: 40px;
-          border-radius: 10px;
+          border-radius: 7px;
           background: linear-gradient(135deg, #005ea3 0%, #006d30 100%);
           display: flex;
           align-items: center;
@@ -376,7 +376,7 @@ export default function DashboardPage() {
         /* Cards */
         .rp-card {
           background: white;
-          border-radius: 16px;
+          border-radius: 10px;
           padding: 24px;
           border: 1px solid rgba(0, 94, 163, 0.08);
           box-shadow: 0 4px 6px rgba(0, 123, 210, 0.06);
@@ -529,7 +529,7 @@ export default function DashboardPage() {
         .rp-employer-icon {
           width: 32px;
           height: 32px;
-          border-radius: 8px;
+          border-radius: 6px;
           background: rgba(0, 94, 163, 0.07);
           display: flex;
           align-items: center;
@@ -553,7 +553,7 @@ export default function DashboardPage() {
           letter-spacing: 0.05em;
           text-transform: uppercase;
           padding: 5px 12px;
-          border-radius: 8px;
+          border-radius: 6px;
           border: 1px solid rgba(0, 94, 163, 0.15);
           background: transparent;
           color: #005ea3;
@@ -627,7 +627,7 @@ export default function DashboardPage() {
           color: #005ea3;
           border: none;
           background: transparent;
-          border-radius: 10px;
+          border-radius: 7px;
           cursor: pointer;
           transition: background 0.15s;
         }
