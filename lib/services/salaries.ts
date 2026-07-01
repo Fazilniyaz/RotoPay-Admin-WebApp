@@ -1,18 +1,22 @@
 // lib/services/salaries.ts
 // CRUD calls for the Salary resource (links a shift + employer with a value).
 import api from '@/lib/axios';
-import { ApiResponse, Salary, PaginationMeta } from '@/lib/types';
+import { ApiResponse, Salary, PaginationMeta, WageRateType } from '@/lib/types';
 
 export interface CreateSalaryInput {
   shiftId?: string | null;
   employerId?: string | null;
   salary: number;
+  rateType?: WageRateType;
+  currency?: string;
 }
 
 export interface UpdateSalaryInput {
   shiftId?: string | null;
   employerId?: string | null;
   salary?: number;
+  rateType?: WageRateType;
+  currency?: string | null;
 }
 
 export interface ListSalariesParams {

@@ -3,26 +3,17 @@
 import api from '@/lib/axios';
 import { ApiResponse, Shift, ShiftType, ShiftStatus, PaginationMeta } from '@/lib/types';
 
-export interface ShiftSalaryAssignment {
-  employerId: string;
-  salary: number;
-}
-
 export interface CreateShiftInput {
   shiftName?: string;
-  startDate: string; // ISO
-  endDate: string; // ISO
+  date: string; // ISO
   startTime: string; // ISO
   endTime: string; // ISO
   totalHours: number;
-  breakDuration?: number;
   shiftType: ShiftType;
-  confirmed?: boolean;
   notes?: string;
-  salaries?: ShiftSalaryAssignment[];
 }
 
-export type UpdateShiftInput = Partial<Omit<CreateShiftInput, 'salaries'>>;
+export type UpdateShiftInput = Partial<CreateShiftInput>;
 
 export interface ListShiftsParams {
   status?: ShiftStatus;
@@ -31,7 +22,6 @@ export interface ListShiftsParams {
   shiftType?: ShiftType;
   from?: string;
   to?: string;
-  confirmed?: boolean;
   page?: number;
   limit?: number;
 }
@@ -51,10 +41,8 @@ export async function getShift(id: string): Promise<Shift> {
 export interface ShiftAnalytics {
   totalHours: number;
   thisMonthHours: number;
-  thisWeekHours: number;
   totalPay: number;
   thisMonthPay: number;
-  thisWeekPay: number;
 }
 
 export async function getShiftAnalytics(): Promise<ShiftAnalytics> {

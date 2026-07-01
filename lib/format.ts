@@ -29,6 +29,16 @@ export function money(n?: number | null): string {
   return `${currencySymbol()}${str}`;
 }
 
+// Money formatted in a specific currency code (e.g. the native currency). Always
+// shows 2dp — conversions are rarely whole numbers.
+export function moneyIn(code: string, n?: number | null): string {
+  const v = n ?? 0;
+  return `${currencySymbol(code)}${v.toLocaleString(undefined, {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  })}`;
+}
+
 const localeFor = (f: string) => (f === 'MM/DD/YYYY' ? 'en-US' : f === 'YYYY-MM-DD' ? 'sv-SE' : 'en-GB');
 
 // Numeric date in the user's chosen format (e.g. 01/07/2025).
@@ -53,6 +63,24 @@ export function fmtDateShort(iso?: string | null): string {
     month: 'short',
     year: 'numeric',
   });
+}
+
+// Relative "time ago" for the activity feed (e.g. "5 minutes ago", "Yesterday").
+export function timeAgo(iso?: string | null): string {
+  if (!iso) return '';
+  const d = new Date(iso);
+  if (isNaN(d.getTime())) return '';
+  const diff = Date.now() - d.getTime();
+  const sec = Math.round(diff / 1000);
+  if (sec < 45) return 'Just now';
+  const min = Math.round(sec / 60);
+  if (min < 60) return `${min} minute${min === 1 ? '' : 's'} ago`;
+  const hr = Math.round(min / 60);
+  if (hr < 24) return `${hr} hour${hr === 1 ? '' : 's'} ago`;
+  const day = Math.round(hr / 24);
+  if (day === 1) return 'Yesterday';
+  if (day < 7) return `${day} days ago`;
+  return fmtDateShort(iso);
 }
 
 export function fmtTime(iso?: string | null): string {

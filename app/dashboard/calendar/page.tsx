@@ -12,12 +12,20 @@ import {
   Clock,
   Users,
   Trash2,
+  CalendarPlus,
+  Wallet2,
+  Check,
+  StickyNote,
   CalendarDays,
+  User as UserIcon,
 } from 'lucide-react';
-import { Shift, CalendarEntry, ClockSession, ShiftType } from '@/lib/types';
-import { listShifts } from '@/lib/services/shifts';
+import { Shift, CalendarEntry, CalendarEntryType, Employer } from '@/lib/types';
+import { listShifts, createShift } from '@/lib/services/shifts';
 import { listCalendar, createCalendarEntry, deleteCalendarEntry } from '@/lib/services/calendar';
-import { listClock } from '@/lib/services/clock';
+import { listEmployers } from '@/lib/services/employers';
+import { listSalaries } from '@/lib/services/salaries';
+import { listPaidMonths, markMonthPaid, unmarkMonthPaid, PaidMonth } from '@/lib/services/payments';
+import { fmtTime } from '@/lib/format';
 
 const GRADIENT = 'linear-gradient(135deg, #005ea3 0%, #006d30 100%)';
 const primaryStyle = { background: GRADIENT };
@@ -26,48 +34,72 @@ const cardCls =
 const inputCls =
   'w-full bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-md px-4 py-3 focus:border-[#005ea3] focus:ring-2 focus:ring-[#005ea3]/10 outline-none transition-all text-sm';
 const labelCls = 'block text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2';
+const primaryBtn =
+  'inline-flex items-center justify-center gap-2 px-5 py-3 text-white text-[11px] font-bold uppercase tracking-widest rounded-lg shadow-[0_4px_14px_rgba(0,94,163,0.25)] hover:-translate-y-0.5 transition-all disabled:opacity-60';
+const chipBtn =
+  'inline-flex items-center gap-2 px-4 py-2.5 text-[11px] font-bold uppercase tracking-widest rounded-lg border border-[#005ea3]/20 text-[#005ea3] dark:text-[#a0c9ff] hover:bg-[#005ea3]/[0.06] transition-all';
 
 const WEEKDAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
-const typeDot: Record<ShiftType, string> = { day: 'bg-amber-500', night: 'bg-indigo-500', rotational: 'bg-teal-500' };
+const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+const PALETTE = ['#005ea3', '#006d30', '#b45309', '#7c3aed', '#dc2626', '#0891b2'];
 
 const startOfDay = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate());
 const isSameDay = (a: Date, b: Date) =>
   a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
-const fmtTime = (iso?: string | null) =>
-  iso ? new Date(iso).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }) : '—';
-const within = (day: Date, startISO?: string | null, endISO?: string | null) => {
-  if (!startISO || !endISO) return false;
-  const s = new Date(startISO); s.setHours(0, 0, 0, 0);
-  const e = new Date(endISO); e.setHours(23, 59, 59, 999);
-  return day >= s && day <= e;
-};
 const toDateInput = (d: Date) =>
   `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+// noon avoids any timezone day-shift when serialising a picked day.
+const dayISO = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate(), 12).toISOString();
+const tint = (hex: string) => `${hex}22`;
+
+const typeIcon: Record<CalendarEntryType, typeof Clock> = {
+  shift: Clock,
+  event: CalendarDays,
+  memo: StickyNote,
+};
 
 export default function CalendarPage() {
   const [viewDate, setViewDate] = useState(() => new Date());
   const [shifts, setShifts] = useState<Shift[]>([]);
   const [entries, setEntries] = useState<CalendarEntry[]>([]);
+  const [employers, setEmployers] = useState<Employer[]>([]);
+  const [paidMonths, setPaidMonths] = useState<PaidMonth[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // Add-entry modal
-  const [addOpen, setAddOpen] = useState(false);
-  const [addDate, setAddDate] = useState<string>(toDateInput(new Date()));
-  const [addTitle, setAddTitle] = useState('');
-  const [addShiftId, setAddShiftId] = useState('');
-  const [saving, setSaving] = useState(false);
-
-  // Shift popup (who's clocked in)
-  const [shiftPopup, setShiftPopup] = useState<Shift | null>(null);
-  const [clockedIn, setClockedIn] = useState<ClockSession[]>([]);
-  const [loadingClocked, setLoadingClocked] = useState(false);
+  // Employee scope (null = the user's own calendar).
+  const [scopeEmployer, setScopeEmployer] = useState<Employer | null>(null);
+  const [scopeShiftIds, setScopeShiftIds] = useState<Set<string> | null>(null);
 
   // Day detail popup
   const [dayPopup, setDayPopup] = useState<Date | null>(null);
+  const [addKind, setAddKind] = useState<'event' | 'memo' | null>(null);
+  const [addTitle, setAddTitle] = useState('');
+  const [addColor, setAddColor] = useState(PALETTE[0]);
+  const [shiftColor, setShiftColor] = useState(PALETTE[0]);
+  const [busy, setBusy] = useState(false);
 
   // Delete entry
   const [delTarget, setDelTarget] = useState<CalendarEntry | null>(null);
   const [deleting, setDeleting] = useState(false);
+
+  // Employee picker
+  const [empOpen, setEmpOpen] = useState(false);
+
+  // Mark month paid
+  const [markOpen, setMarkOpen] = useState(false);
+  const [payYear, setPayYear] = useState(() => new Date().getFullYear());
+  const [payMonth, setPayMonth] = useState(() => new Date().getMonth() + 1);
+  const [marking, setMarking] = useState(false);
+
+  // Add-shift modal (from the calendar)
+  const [scOpen, setScOpen] = useState(false);
+  const [scDate, setScDate] = useState(toDateInput(new Date()));
+  const [scName, setScName] = useState('');
+  const [scStart, setScStart] = useState('09:00');
+  const [scEnd, setScEnd] = useState('17:00');
+  const [scHours, setScHours] = useState('8');
+  const [scType, setScType] = useState('day');
+  const [scSaving, setScSaving] = useState(false);
 
   const cells = useMemo(() => {
     const first = new Date(viewDate.getFullYear(), viewDate.getMonth(), 1);
@@ -83,18 +115,36 @@ export default function CalendarPage() {
     try {
       const from = cells[0];
       const to = cells[cells.length - 1];
-      const [shiftRes, entryRes] = await Promise.all([
+      const employerId = scopeEmployer?.id;
+      const [shiftRes, entryRes, empRes, paidRes] = await Promise.all([
         listShifts({ limit: 100 }),
-        listCalendar({ from: from.toISOString(), to: new Date(to.getFullYear(), to.getMonth(), to.getDate(), 23, 59, 59).toISOString() }),
+        listCalendar({
+          from: from.toISOString(),
+          to: new Date(to.getFullYear(), to.getMonth(), to.getDate(), 23, 59, 59).toISOString(),
+          employerId,
+        }),
+        listEmployers({ limit: 100 }),
+        listPaidMonths(),
       ]);
       setShifts(shiftRes.data);
       setEntries(entryRes);
+      setEmployers(empRes.data);
+      setPaidMonths(paidRes);
+
+      // When scoped to an employee, restrict "available shifts" to that
+      // employee's wage-linked shifts.
+      if (employerId) {
+        const wageRes = await listSalaries({ employerId, limit: 200 });
+        setScopeShiftIds(new Set(wageRes.data.map((w) => w.shiftId).filter(Boolean) as string[]));
+      } else {
+        setScopeShiftIds(null);
+      }
     } catch {
       toast.error('Failed to load calendar');
     } finally {
       setLoading(false);
     }
-  }, [cells]);
+  }, [cells, scopeEmployer]);
 
   useEffect(() => {
     load();
@@ -103,64 +153,62 @@ export default function CalendarPage() {
   const today = startOfDay(new Date());
   const monthLabel = viewDate.toLocaleDateString('en-GB', { month: 'long', year: 'numeric' });
 
-  const dayShifts = (d: Date) => shifts.filter((s) => within(d, s.startDate, s.endDate));
   const dayEntries = (d: Date) => entries.filter((e) => isSameDay(new Date(e.date), d));
+  const availableShifts = (d: Date) =>
+    shifts.filter(
+      (s) => isSameDay(new Date(s.date), d) && (!scopeShiftIds || scopeShiftIds.has(s.id))
+    );
+  const isPaid = (year: number, month: number) =>
+    paidMonths.some((p) => p.year === year && p.month === month);
 
-  const openAdd = (d: Date) => {
-    setAddDate(toDateInput(d));
-    setAddTitle('');
-    setAddShiftId('');
-    setAddOpen(true);
-  };
+  const shiftLabelText = (s: Shift) => s.shiftName || `${s.shiftType ?? 'Shift'}`;
 
-  const wordCount = addTitle.trim() ? addTitle.trim().split(/\s+/).length : 0;
-
-  const submitAdd = async () => {
-    if (!addTitle.trim()) {
-      toast.error('Enter a title');
-      return;
-    }
-    if (wordCount > 15) {
-      toast.error('Title must be 15 words or fewer');
-      return;
-    }
-    setSaving(true);
+  // ── Entry creation ───────────────────────────
+  const addEntry = async (type: CalendarEntryType, title: string, color: string, shiftId?: string) => {
+    if (!dayPopup) return;
+    setBusy(true);
     try {
       await createCalendarEntry({
-        date: new Date(addDate).toISOString(),
-        title: addTitle.trim(),
-        shiftId: addShiftId || undefined,
+        date: dayISO(dayPopup),
+        type,
+        title,
+        color,
+        shiftId,
+        employerId: scopeEmployer?.id,
       });
       toast.success('Added to calendar');
-      setAddOpen(false);
-      load();
+      await load();
     } catch (err: any) {
       toast.error(err?.response?.data?.message || 'Failed to add');
     } finally {
-      setSaving(false);
+      setBusy(false);
     }
   };
 
-  const openShift = async (shift: Shift) => {
-    setShiftPopup(shift);
-    setLoadingClocked(true);
-    setClockedIn([]);
-    try {
-      const res = await listClock({ shiftId: shift.id, status: 'active', limit: 100 });
-      setClockedIn(res.data);
-    } catch {
-      // ignore
-    } finally {
-      setLoadingClocked(false);
+  const submitAddNote = async () => {
+    if (!addKind) return;
+    const t = addTitle.trim();
+    if (!t) {
+      toast.error('Enter a name');
+      return;
     }
+    if (t.split(/\s+/).length > 15) {
+      toast.error('Name must be 15 words or fewer');
+      return;
+    }
+    await addEntry(addKind, t, addColor);
+    setAddKind(null);
+    setAddTitle('');
   };
+
+  const showShiftOnCalendar = (s: Shift) => addEntry('shift', shiftLabelText(s), shiftColor, s.id);
 
   const confirmDelete = async () => {
     if (!delTarget) return;
     setDeleting(true);
     try {
       await deleteCalendarEntry(delTarget.id);
-      toast.success('Entry removed');
+      toast.success('Removed');
       setDelTarget(null);
       load();
     } catch {
@@ -170,7 +218,79 @@ export default function CalendarPage() {
     }
   };
 
-  const addShiftOptions = shifts.filter((s) => within(new Date(addDate), s.startDate, s.endDate));
+  // ── Mark month paid ──────────────────────────
+  const submitMark = async () => {
+    setMarking(true);
+    try {
+      await markMonthPaid(payYear, payMonth);
+      toast.success(`${MONTHS[payMonth - 1]} ${payYear} marked as paid`);
+      setMarkOpen(false);
+      const paid = await listPaidMonths();
+      setPaidMonths(paid);
+    } catch (err: any) {
+      toast.error(err?.response?.data?.message || 'Failed to mark paid');
+    } finally {
+      setMarking(false);
+    }
+  };
+
+  const toggleUnmark = async (p: PaidMonth) => {
+    try {
+      await unmarkMonthPaid(p.year, p.month);
+      setPaidMonths((prev) => prev.filter((x) => x.id !== p.id));
+      toast.success('Unmarked');
+    } catch {
+      toast.error('Failed to unmark');
+    }
+  };
+
+  // ── Add shift from calendar ──────────────────
+  const openAddShift = (d: Date) => {
+    setScDate(toDateInput(d));
+    setScName('');
+    setScStart('09:00');
+    setScEnd('17:00');
+    setScHours('8');
+    setScType('day');
+    setScOpen(true);
+  };
+
+  // keep total hours in sync (overnight-aware)
+  useEffect(() => {
+    const start = new Date(`${scDate}T${scStart}`).getTime();
+    let end = new Date(`${scDate}T${scEnd}`).getTime();
+    if (isNaN(start) || isNaN(end)) return;
+    if (end <= start) end += 86_400_000;
+    const hours = (end - start) / 3_600_000;
+    if (hours > 0) setScHours(String(Math.round(hours * 100) / 100));
+  }, [scDate, scStart, scEnd]);
+
+  const submitAddShift = async () => {
+    if (!scType.trim()) {
+      toast.error('Shift type is required');
+      return;
+    }
+    setScSaving(true);
+    try {
+      await createShift({
+        shiftName: scName.trim() || undefined,
+        date: new Date(scDate).toISOString(),
+        startTime: new Date(`${scDate}T${scStart}`).toISOString(),
+        endTime: new Date(`${scDate}T${scEnd}`).toISOString(),
+        totalHours: Number(scHours) || 0,
+        shiftType: scType.trim(),
+      });
+      toast.success('Shift created');
+      setScOpen(false);
+      load();
+    } catch (err: any) {
+      toast.error(err?.response?.data?.message || 'Failed to create shift');
+    } finally {
+      setScSaving(false);
+    }
+  };
+
+  const currentMonthPaid = isPaid(viewDate.getFullYear(), viewDate.getMonth() + 1);
 
   return (
     <DashboardLayout>
@@ -179,16 +299,26 @@ export default function CalendarPage() {
         <div className="flex items-end justify-between gap-3 flex-wrap">
           <div>
             <h1 className="text-3xl font-extrabold text-[#005ea3]">Calendar</h1>
-            <p className="text-sm text-gray-400 mt-0.5">Shifts and your day notes at a glance</p>
+            <p className="text-sm text-gray-400 mt-0.5">
+              {scopeEmployer ? (
+                <span className="inline-flex items-center gap-1">
+                  <UserIcon className="h-3.5 w-3.5" /> {scopeEmployer.employerName}’s schedule
+                </span>
+              ) : (
+                'Your events, memos and shift labels'
+              )}
+            </p>
           </div>
-          <button
-            onClick={() => openAdd(new Date())}
-            className="inline-flex items-center gap-2 px-5 py-3 text-white text-[11px] font-bold uppercase tracking-widest rounded-lg shadow-[0_4px_14px_rgba(0,94,163,0.25)] hover:-translate-y-0.5 transition-all"
-            style={primaryStyle}
-          >
-            <Plus className="h-4 w-4" />
-            Add Entry
-          </button>
+          <div className="flex gap-2 flex-wrap">
+            <button onClick={() => setEmpOpen(true)} className={chipBtn}>
+              <Users className="h-4 w-4" />
+              {scopeEmployer ? 'Switch employee' : 'By employee'}
+            </button>
+            <button onClick={() => setMarkOpen(true)} className={chipBtn}>
+              <Wallet2 className="h-4 w-4" />
+              Mark month paid
+            </button>
+          </div>
         </div>
 
         {/* Month bar */}
@@ -199,8 +329,13 @@ export default function CalendarPage() {
           >
             <ChevronLeft className="h-5 w-5" />
           </button>
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3 flex-wrap justify-center">
             <h2 className="font-bold text-lg text-[#1b1c1c] dark:text-white">{monthLabel}</h2>
+            {currentMonthPaid && (
+              <span className="inline-flex items-center gap-1 text-[9px] font-bold uppercase tracking-widest text-[#006d30] bg-[#006d30]/10 rounded-full px-2 py-0.5">
+                <Check className="h-3 w-3" /> Paid
+              </span>
+            )}
             <button
               onClick={() => setViewDate(new Date())}
               className="text-[10px] font-bold uppercase tracking-widest text-[#005ea3] border border-[#005ea3]/20 rounded-md px-2.5 py-1 hover:bg-[#005ea3]/[0.06] transition-colors"
@@ -218,7 +353,6 @@ export default function CalendarPage() {
 
         {/* Grid */}
         <div className={`${cardCls} p-2 sm:p-3`}>
-          {/* Weekday header */}
           <div className="grid grid-cols-7 mb-1">
             {WEEKDAYS.map((w) => (
               <div key={w} className="text-center text-[9px] sm:text-[10px] font-bold uppercase tracking-widest text-[#707783] dark:text-gray-400 py-2">
@@ -237,12 +371,8 @@ export default function CalendarPage() {
               {cells.map((d, i) => {
                 const inMonth = d.getMonth() === viewDate.getMonth();
                 const isToday = isSameDay(d, today);
-                const ds = dayShifts(d);
                 const de = dayEntries(d);
-                const markers = [
-                  ...ds.map((s) => ({ kind: 'shift' as const, s })),
-                  ...de.map((e) => ({ kind: 'entry' as const, e })),
-                ];
+                const nShifts = availableShifts(d).length;
                 return (
                   <div
                     key={i}
@@ -266,51 +396,46 @@ export default function CalendarPage() {
                       >
                         {d.getDate()}
                       </span>
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          openAdd(d);
-                        }}
-                        aria-label="Add entry"
-                        className="w-5 h-5 rounded-md flex items-center justify-center text-[#005ea3] bg-[#005ea3]/[0.08] hover:bg-[#005ea3]/15 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity"
-                      >
-                        <Plus className="h-3.5 w-3.5" />
-                      </button>
+                      <div className="flex items-center gap-1">
+                        {nShifts > 0 && (
+                          <span
+                            className="text-[8px] font-bold text-[#005ea3] bg-[#005ea3]/[0.08] rounded px-1 py-0.5"
+                            title={`${nShifts} shift(s) available`}
+                          >
+                            {nShifts}▪
+                          </span>
+                        )}
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setDayPopup(d);
+                          }}
+                          aria-label="Open day"
+                          className="w-5 h-5 rounded-md flex items-center justify-center text-[#005ea3] bg-[#005ea3]/[0.08] hover:bg-[#005ea3]/15 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity"
+                        >
+                          <Plus className="h-3.5 w-3.5" />
+                        </button>
+                      </div>
                     </div>
 
                     <div className="mt-1 space-y-1">
-                      {markers.slice(0, 3).map((m, j) =>
-                        m.kind === 'shift' ? (
-                          <button
-                            key={`s${j}`}
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              openShift(m.s);
-                            }}
-                            className="w-full flex items-center gap-1 px-1.5 py-0.5 rounded text-white text-[9px] sm:text-[10px] font-semibold truncate hover:opacity-90"
-                            style={primaryStyle}
-                          >
-                            <Clock className="h-2.5 w-2.5 flex-shrink-0" />
-                            <span className="truncate">{m.s.shiftName || m.s.shiftType || 'Shift'}</span>
-                          </button>
-                        ) : (
-                          <button
-                            key={`e${j}`}
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setDelTarget(m.e);
-                            }}
-                            className="w-full flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] sm:text-[10px] font-medium truncate bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300 hover:opacity-90"
-                            title={m.e.title}
-                          >
-                            <span className="w-1 h-1 rounded-full bg-emerald-500 flex-shrink-0" />
-                            <span className="truncate">{m.e.title}</span>
-                          </button>
-                        )
-                      )}
-                      {markers.length > 3 && (
+                      {de.slice(0, 3).map((e) => (
+                        <div
+                          key={e.id}
+                          className="w-full flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] sm:text-[10px] font-semibold truncate"
+                          style={{ backgroundColor: tint(e.color || '#005ea3'), color: e.color || '#005ea3' }}
+                          title={e.title}
+                        >
+                          <span
+                            className="w-1.5 h-1.5 rounded-full flex-shrink-0"
+                            style={{ backgroundColor: e.color || '#005ea3' }}
+                          />
+                          <span className="truncate">{e.title}</span>
+                        </div>
+                      ))}
+                      {de.length > 3 && (
                         <p className="text-[9px] text-[#707783] dark:text-gray-400 pl-1">
-                          +{markers.length - 3} more
+                          +{de.length - 3} more
                         </p>
                       )}
                     </div>
@@ -322,80 +447,22 @@ export default function CalendarPage() {
         </div>
 
         {/* Legend */}
-        <div className="flex items-center gap-4 text-[10px] font-bold uppercase tracking-widest text-[#707783] dark:text-gray-400">
-          <span className="flex items-center gap-1.5">
-            <span className="w-3 h-3 rounded" style={primaryStyle} /> Shift
-          </span>
-          <span className="flex items-center gap-1.5">
-            <span className="w-3 h-3 rounded bg-emerald-400" /> Note
-          </span>
+        <div className="flex items-center gap-4 text-[10px] font-bold uppercase tracking-widest text-[#707783] dark:text-gray-400 flex-wrap">
+          <span className="flex items-center gap-1.5"><Clock className="h-3.5 w-3.5" /> Shift label</span>
+          <span className="flex items-center gap-1.5"><CalendarDays className="h-3.5 w-3.5" /> Event</span>
+          <span className="flex items-center gap-1.5"><StickyNote className="h-3.5 w-3.5" /> Memo</span>
+          <span className="text-gray-400 normal-case tracking-normal">Tap any day to compose it.</span>
         </div>
       </div>
-
-      {/* Add entry modal */}
-      <Modal
-        open={addOpen}
-        onClose={() => setAddOpen(false)}
-        title="Add to Calendar"
-        footer={
-          <>
-            <button
-              onClick={() => setAddOpen(false)}
-              className="flex-1 py-3 text-[11px] font-bold uppercase tracking-widest text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors rounded-md border border-gray-200 dark:border-gray-700"
-            >
-              Cancel
-            </button>
-            <button
-              onClick={submitAdd}
-              disabled={saving}
-              className="flex-[2] inline-flex items-center justify-center gap-2 px-5 py-3 text-white text-[11px] font-bold uppercase tracking-widest rounded-lg shadow-[0_4px_14px_rgba(0,94,163,0.25)] disabled:opacity-60"
-              style={primaryStyle}
-            >
-              {saving ? 'Saving…' : 'Add Entry'}
-            </button>
-          </>
-        }
-      >
-        <div className="space-y-5">
-          <div>
-            <label className={labelCls}>Date</label>
-            <input type="date" value={addDate} onChange={(e) => setAddDate(e.target.value)} className={inputCls} />
-          </div>
-          <div>
-            <div className="flex items-center justify-between mb-2">
-              <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Title (custom)</label>
-              <span className={`text-[10px] font-mono ${wordCount > 15 ? 'text-red-500' : 'text-gray-400'}`}>
-                {wordCount}/15 words
-              </span>
-            </div>
-            <input
-              type="text"
-              placeholder="e.g. Gym session, Holiday…"
-              value={addTitle}
-              onChange={(e) => setAddTitle(e.target.value)}
-              className={inputCls}
-            />
-          </div>
-          {addShiftOptions.length > 0 && (
-            <div>
-              <label className={labelCls}>Link to a shift (optional)</label>
-              <select value={addShiftId} onChange={(e) => setAddShiftId(e.target.value)} className={inputCls}>
-                <option value="">None</option>
-                {addShiftOptions.map((s) => (
-                  <option key={s.id} value={s.id}>
-                    {s.shiftType ?? 'Shift'} · {fmtTime(s.startTime)}–{fmtTime(s.endTime)}
-                  </option>
-                ))}
-              </select>
-            </div>
-          )}
-        </div>
-      </Modal>
 
       {/* Day detail popup */}
       <Modal
         open={!!dayPopup}
-        onClose={() => setDayPopup(null)}
+        onClose={() => {
+          setDayPopup(null);
+          setAddKind(null);
+          setAddTitle('');
+        }}
         title={
           dayPopup
             ? dayPopup.toLocaleDateString('en-GB', {
@@ -409,85 +476,172 @@ export default function CalendarPage() {
         maxWidth="max-w-md"
       >
         {dayPopup && (
-          <div className="space-y-5">
-            {/* Shifts */}
+          <div className="space-y-6">
+            {/* On the calendar */}
             <div>
               <p className="text-[10px] font-bold uppercase tracking-widest text-[#707783] dark:text-gray-400 mb-2">
-                Shifts ({dayShifts(dayPopup).length})
+                On this day ({dayEntries(dayPopup).length})
               </p>
-              {dayShifts(dayPopup).length === 0 ? (
-                <p className="text-xs text-gray-400">No shifts on this day.</p>
+              {dayEntries(dayPopup).length === 0 ? (
+                <p className="text-xs text-gray-400">Nothing on this day yet.</p>
               ) : (
                 <div className="space-y-2">
-                  {dayShifts(dayPopup).map((s) => (
-                    <button
-                      key={s.id}
-                      onClick={() => {
-                        setDayPopup(null);
-                        openShift(s);
-                      }}
-                      className="w-full text-left rounded-md border border-[#005ea3]/[0.08] dark:border-white/10 p-3 hover:bg-[#005ea3]/[0.04] transition-colors flex items-center gap-3"
-                    >
-                      <div className="w-9 h-9 rounded-md flex items-center justify-center flex-shrink-0" style={primaryStyle}>
-                        <Clock className="h-4 w-4 text-white" />
+                  {dayEntries(dayPopup).map((e) => {
+                    const Icon = typeIcon[e.type];
+                    return (
+                      <div
+                        key={e.id}
+                        className="flex items-center justify-between gap-2 rounded-md border p-3"
+                        style={{ borderColor: tint(e.color || '#005ea3'), backgroundColor: tint(e.color || '#005ea3') }}
+                      >
+                        <span className="flex items-center gap-2 text-sm min-w-0" style={{ color: e.color || '#005ea3' }}>
+                          <Icon className="h-4 w-4 flex-shrink-0" />
+                          <span className="truncate font-semibold">{e.title}</span>
+                          <span className="text-[9px] uppercase tracking-wider opacity-70">{e.type}</span>
+                        </span>
+                        <button
+                          onClick={() => setDelTarget(e)}
+                          className="text-red-400 hover:text-red-500 flex-shrink-0"
+                          aria-label="Remove"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </button>
                       </div>
-                      <div className="min-w-0 flex-1">
-                        <p className="font-semibold text-sm text-[#1b1c1c] dark:text-white truncate">
-                          {s.shiftName || `${s.shiftType ?? ''} shift`.trim() || 'Shift'}
-                        </p>
-                        <p className="text-xs text-[#707783] dark:text-gray-400 font-mono">
-                          {fmtTime(s.startTime)} – {fmtTime(s.endTime)} · {s.totalHours}h
-                        </p>
-                      </div>
-                      <ChevronRight className="h-4 w-4 text-gray-400 flex-shrink-0" />
-                    </button>
-                  ))}
+                    );
+                  })}
                 </div>
               )}
             </div>
 
-            {/* Notes */}
+            {/* Available shifts on this day */}
             <div>
               <div className="flex items-center justify-between mb-2">
                 <p className="text-[10px] font-bold uppercase tracking-widest text-[#707783] dark:text-gray-400">
-                  Notes ({dayEntries(dayPopup).length})
+                  Available shifts ({availableShifts(dayPopup).length})
                 </p>
                 <button
                   onClick={() => {
                     const d = dayPopup;
                     setDayPopup(null);
-                    openAdd(d);
+                    openAddShift(d);
                   }}
                   className="inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-widest text-[#005ea3] hover:underline"
                 >
-                  <Plus className="h-3 w-3" /> Add
+                  <CalendarPlus className="h-3.5 w-3.5" /> Add new shift
                 </button>
               </div>
-              {dayEntries(dayPopup).length === 0 ? (
-                <p className="text-xs text-gray-400">No notes yet.</p>
+              {availableShifts(dayPopup).length === 0 ? (
+                <p className="text-xs text-gray-400">No shifts on this day.</p>
               ) : (
-                <div className="space-y-2">
-                  {dayEntries(dayPopup).map((e) => (
-                    <div
-                      key={e.id}
-                      className="flex items-center justify-between gap-2 rounded-md border border-emerald-200/60 dark:border-emerald-900/40 bg-emerald-50/50 dark:bg-emerald-900/10 p-3"
-                    >
-                      <span className="flex items-center gap-2 text-sm text-[#1b1c1c] dark:text-white min-w-0">
-                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 flex-shrink-0" />
-                        <span className="truncate">{e.title}</span>
-                      </span>
+                <>
+                  <div className="flex items-center gap-1.5 mb-2">
+                    <span className="text-[10px] text-gray-400">Label colour:</span>
+                    {PALETTE.map((c) => (
                       <button
-                        onClick={() => {
-                          setDayPopup(null);
-                          setDelTarget(e);
-                        }}
-                        className="text-red-400 hover:text-red-500 flex-shrink-0"
-                        aria-label="Remove"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </button>
-                    </div>
-                  ))}
+                        key={c}
+                        onClick={() => setShiftColor(c)}
+                        className={`w-5 h-5 rounded-full border-2 ${shiftColor === c ? 'border-gray-500' : 'border-transparent'}`}
+                        style={{ backgroundColor: c }}
+                        aria-label={`Colour ${c}`}
+                      />
+                    ))}
+                  </div>
+                  <div className="space-y-2">
+                    {availableShifts(dayPopup).map((s) => {
+                      const shown = dayEntries(dayPopup).some((e) => e.type === 'shift' && e.shiftId === s.id);
+                      return (
+                        <div
+                          key={s.id}
+                          className="flex items-center justify-between gap-2 rounded-md border border-[#005ea3]/[0.08] dark:border-white/10 p-3"
+                        >
+                          <div className="min-w-0">
+                            <p className="font-semibold text-sm text-[#1b1c1c] dark:text-white truncate">
+                              {shiftLabelText(s)}
+                            </p>
+                            <p className="text-xs text-[#707783] dark:text-gray-400 font-mono">
+                              {fmtTime(s.startTime)} – {fmtTime(s.endTime)} · {s.totalHours}h
+                            </p>
+                          </div>
+                          <button
+                            disabled={shown || busy}
+                            onClick={() => showShiftOnCalendar(s)}
+                            className="text-[10px] font-bold uppercase tracking-widest text-[#005ea3] border border-[#005ea3]/20 rounded-md px-2.5 py-1.5 hover:bg-[#005ea3]/[0.06] transition-colors disabled:opacity-50 flex-shrink-0"
+                          >
+                            {shown ? 'Shown' : 'Show'}
+                          </button>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </>
+              )}
+            </div>
+
+            {/* Add event / memo */}
+            <div className="border-t border-gray-100 dark:border-gray-700 pt-4">
+              {!addKind ? (
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => {
+                      setAddKind('event');
+                      setAddColor(PALETTE[3]);
+                    }}
+                    className="flex-1 inline-flex items-center justify-center gap-1.5 py-2.5 rounded-md border border-[#005ea3]/20 text-[#005ea3] dark:text-[#a0c9ff] text-[11px] font-bold uppercase tracking-widest hover:bg-[#005ea3]/[0.06] transition-colors"
+                  >
+                    <CalendarDays className="h-4 w-4" /> Add event
+                  </button>
+                  <button
+                    onClick={() => {
+                      setAddKind('memo');
+                      setAddColor(PALETTE[2]);
+                    }}
+                    className="flex-1 inline-flex items-center justify-center gap-1.5 py-2.5 rounded-md border border-[#005ea3]/20 text-[#005ea3] dark:text-[#a0c9ff] text-[11px] font-bold uppercase tracking-widest hover:bg-[#005ea3]/[0.06] transition-colors"
+                  >
+                    <StickyNote className="h-4 w-4" /> Add memo
+                  </button>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  <label className={labelCls}>{addKind === 'event' ? 'Event name' : 'Memo name'}</label>
+                  <input
+                    type="text"
+                    autoFocus
+                    placeholder={addKind === 'event' ? 'e.g. Team meeting' : 'e.g. Bring uniform'}
+                    value={addTitle}
+                    onChange={(ev) => setAddTitle(ev.target.value)}
+                    className={inputCls}
+                  />
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-[10px] text-gray-400">Colour:</span>
+                    {PALETTE.map((c) => (
+                      <button
+                        key={c}
+                        onClick={() => setAddColor(c)}
+                        className={`w-5 h-5 rounded-full border-2 ${addColor === c ? 'border-gray-500' : 'border-transparent'}`}
+                        style={{ backgroundColor: c }}
+                        aria-label={`Colour ${c}`}
+                      />
+                    ))}
+                  </div>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => {
+                        setAddKind(null);
+                        setAddTitle('');
+                      }}
+                      className="flex-1 py-2.5 text-[11px] font-bold uppercase tracking-widest text-gray-500 dark:text-gray-400 rounded-md border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      onClick={submitAddNote}
+                      disabled={busy}
+                      className={`flex-[2] ${primaryBtn}`}
+                      style={primaryStyle}
+                    >
+                      {busy ? 'Adding…' : `Add ${addKind}`}
+                    </button>
+                  </div>
                 </div>
               )}
             </div>
@@ -495,65 +649,174 @@ export default function CalendarPage() {
         )}
       </Modal>
 
-      {/* Shift popup — who's clocked in */}
-      <Modal
-        open={!!shiftPopup}
-        onClose={() => setShiftPopup(null)}
-        title="Shift Details"
-        maxWidth="max-w-md"
-      >
-        {shiftPopup && (
-          <div className="space-y-4">
-            <div className="rounded-md bg-[#005ea3]/[0.04] dark:bg-white/5 border border-[#005ea3]/[0.06] dark:border-white/5 p-4 flex items-center gap-3">
-              <div className="w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0" style={primaryStyle}>
-                <CalendarDays className="h-5 w-5 text-white" />
+      {/* Employee picker */}
+      <Modal open={empOpen} onClose={() => setEmpOpen(false)} title="Show calendar for" maxWidth="max-w-sm">
+        <div className="space-y-2">
+          <button
+            onClick={() => {
+              setScopeEmployer(null);
+              setEmpOpen(false);
+            }}
+            className={`w-full flex items-center gap-3 rounded-md border p-3 text-left transition-colors ${
+              !scopeEmployer ? 'border-[#005ea3] bg-[#005ea3]/[0.04]' : 'border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800'
+            }`}
+          >
+            <div className="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0" style={primaryStyle}>
+              <CalendarDays className="h-4 w-4 text-white" />
+            </div>
+            <span className="font-semibold text-sm text-[#1b1c1c] dark:text-white">My calendar</span>
+          </button>
+          {employers.length === 0 && (
+            <p className="text-xs text-gray-400 py-2">No employees yet — add them on the Employers page.</p>
+          )}
+          {employers.map((emp) => (
+            <button
+              key={emp.id}
+              onClick={() => {
+                setScopeEmployer(emp);
+                setEmpOpen(false);
+              }}
+              className={`w-full flex items-center gap-3 rounded-md border p-3 text-left transition-colors ${
+                scopeEmployer?.id === emp.id ? 'border-[#005ea3] bg-[#005ea3]/[0.04]' : 'border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800'
+              }`}
+            >
+              <div className="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0 bg-[#005ea3]/10 text-[#005ea3] font-bold text-sm">
+                {emp.employerName.slice(0, 1).toUpperCase()}
               </div>
               <div className="min-w-0">
-                <p className="font-bold text-sm text-[#1b1c1c] dark:text-white truncate">
-                  {shiftPopup.shiftName || `${shiftPopup.shiftType ?? ''} shift`.trim()}
-                </p>
-                <p className="text-xs text-[#707783] dark:text-gray-400 font-mono">
-                  {shiftPopup.shiftType ? `${shiftPopup.shiftType} · ` : ''}
-                  {fmtTime(shiftPopup.startTime)} – {fmtTime(shiftPopup.endTime)} · {shiftPopup.totalHours}h
-                </p>
+                <p className="font-semibold text-sm text-[#1b1c1c] dark:text-white truncate">{emp.employerName}</p>
+                <p className="text-xs text-gray-400 truncate">{emp.store}</p>
               </div>
-            </div>
+            </button>
+          ))}
+        </div>
+      </Modal>
 
-            <div className="flex items-center gap-2 text-sm font-bold text-[#1b1c1c] dark:text-white">
-              <Users className="h-4 w-4 text-[#005ea3]" />
-              Currently clocked in
-              <span className="ml-auto font-mono text-[#005ea3] dark:text-[#a0c9ff]">
-                {loadingClocked ? '…' : clockedIn.length}
-              </span>
+      {/* Mark month paid */}
+      <Modal
+        open={markOpen}
+        onClose={() => setMarkOpen(false)}
+        title="Mark this month as paid"
+        maxWidth="max-w-md"
+        footer={
+          <>
+            <button
+              onClick={() => setMarkOpen(false)}
+              className="flex-1 py-3 text-[11px] font-bold uppercase tracking-widest text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors rounded-md border border-gray-200 dark:border-gray-700"
+            >
+              Close
+            </button>
+            <button onClick={submitMark} disabled={marking} className={`flex-[2] ${primaryBtn}`} style={primaryStyle}>
+              {marking ? 'Saving…' : 'Confirm'}
+            </button>
+          </>
+        }
+      >
+        <div className="space-y-5">
+          <p className="text-xs text-gray-400">
+            Marking a month paid records the total wages of that month’s shifts and updates the
+            <span className="font-semibold text-[#005ea3]"> This Month Pay</span> and
+            <span className="font-semibold text-[#005ea3]"> Total Pay</span> tabs on Shifts.
+          </p>
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className={labelCls}>Month</label>
+              <select value={payMonth} onChange={(e) => setPayMonth(Number(e.target.value))} className={inputCls}>
+                {MONTHS.map((m, idx) => (
+                  <option key={m} value={idx + 1}>{m}</option>
+                ))}
+              </select>
             </div>
+            <div>
+              <label className={labelCls}>Year</label>
+              <select value={payYear} onChange={(e) => setPayYear(Number(e.target.value))} className={inputCls}>
+                {Array.from({ length: 5 }, (_, i) => new Date().getFullYear() - 2 + i).map((y) => (
+                  <option key={y} value={y}>{y}</option>
+                ))}
+              </select>
+            </div>
+          </div>
 
-            {loadingClocked ? (
-              <div className="flex justify-center py-6 text-gray-400">
-                <Loader2 className="h-5 w-5 animate-spin" />
-              </div>
-            ) : clockedIn.length === 0 ? (
-              <p className="text-sm text-gray-400 py-4 text-center">No one is clocked in for this shift right now.</p>
-            ) : (
-              <div className="space-y-2">
-                {clockedIn.map((c) => (
-                  <div key={c.id} className="flex items-center justify-between rounded-md border border-[#005ea3]/[0.08] dark:border-white/10 p-3">
-                    <span className="font-semibold text-sm text-[#1b1c1c] dark:text-white">
-                      {c.salary?.employer?.employerName ?? 'Employee'}
+          {paidMonths.length > 0 && (
+            <div>
+              <p className="text-[10px] font-bold uppercase tracking-widest text-[#707783] dark:text-gray-400 mb-2">
+                Paid months
+              </p>
+              <div className="space-y-2 max-h-40 overflow-y-auto">
+                {paidMonths.map((p) => (
+                  <div key={p.id} className="flex items-center justify-between rounded-md border border-[#006d30]/20 bg-[#006d30]/[0.04] p-2.5">
+                    <span className="text-sm text-[#1b1c1c] dark:text-white">
+                      {MONTHS[p.month - 1]} {p.year}
                     </span>
-                    <span className="text-xs font-mono text-emerald-600 dark:text-emerald-400">
-                      ● since {fmtTime(c.clockInTime)}
-                    </span>
+                    <button
+                      onClick={() => toggleUnmark(p)}
+                      className="text-[10px] font-bold uppercase tracking-widest text-red-400 hover:text-red-500"
+                    >
+                      Unmark
+                    </button>
                   </div>
                 ))}
               </div>
-            )}
+            </div>
+          )}
+        </div>
+      </Modal>
+
+      {/* Add shift from calendar */}
+      <Modal
+        open={scOpen}
+        onClose={() => setScOpen(false)}
+        title="Add Shift"
+        maxWidth="max-w-lg"
+        footer={
+          <>
+            <button
+              onClick={() => setScOpen(false)}
+              className="flex-1 py-3 text-[11px] font-bold uppercase tracking-widest text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors rounded-md border border-gray-200 dark:border-gray-700"
+            >
+              Cancel
+            </button>
+            <button onClick={submitAddShift} disabled={scSaving} className={`flex-[2] ${primaryBtn}`} style={primaryStyle}>
+              {scSaving ? 'Saving…' : 'Save Shift'}
+            </button>
+          </>
+        }
+      >
+        <div className="space-y-5">
+          <div>
+            <label className={labelCls}>Shift Name (optional)</label>
+            <input type="text" value={scName} onChange={(e) => setScName(e.target.value)} className={inputCls} placeholder="e.g. Morning Floor" />
           </div>
-        )}
+          <div>
+            <label className={labelCls}>Date</label>
+            <input type="date" value={scDate} onChange={(e) => setScDate(e.target.value)} className={inputCls} />
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className={labelCls}>Start Time</label>
+              <input type="time" value={scStart} onChange={(e) => setScStart(e.target.value)} className={inputCls} />
+            </div>
+            <div>
+              <label className={labelCls}>End Time</label>
+              <input type="time" value={scEnd} onChange={(e) => setScEnd(e.target.value)} className={inputCls} />
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className={labelCls}>Total Hours</label>
+              <input type="number" min={0} step="0.25" value={scHours} onChange={(e) => setScHours(e.target.value)} className={`${inputCls} font-mono`} />
+            </div>
+            <div>
+              <label className={labelCls}>Shift Type</label>
+              <input type="text" value={scType} onChange={(e) => setScType(e.target.value)} className={inputCls} placeholder="day / night / custom" />
+            </div>
+          </div>
+        </div>
       </Modal>
 
       <ConfirmDialog
         open={!!delTarget}
-        title="Remove entry?"
+        title="Remove from calendar?"
         message={`Remove "${delTarget?.title}" from the calendar?`}
         confirmLabel="Remove"
         loading={deleting}

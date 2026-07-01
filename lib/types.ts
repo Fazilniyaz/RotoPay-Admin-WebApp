@@ -39,28 +39,30 @@ export interface Employer {
   updatedAt?: string;
 }
 
-export type ShiftType = 'night' | 'day' | 'rotational';
+// Free-form: 'day' | 'night' | 'rotational' or a user-supplied custom label.
+export type ShiftType = string;
 export type ShiftStatus = 'upcoming' | 'isActive' | 'completed';
+export type WageRateType = 'hourly' | 'weekly' | 'monthly';
 
-// A Salary row links a Shift to an Employer and carries the pay value.
+// A Salary/"wage" row links a Shift to an Employer and carries the pay value.
 export interface Salary {
   id: string;
   userId: string;
   shiftId?: string | null;
   employerId?: string | null;
   salary?: number | null;
+  rateType?: WageRateType;
+  currency?: string | null;
   hourlyPayRate?: number | null;
   shift?: {
     id: string;
     shiftName?: string | null;
-    startDate?: string | null;
-    endDate?: string | null;
+    date?: string | null;
     startTime?: string;
     endTime?: string;
     totalHours?: number;
     shiftType?: ShiftType | null;
     status?: ShiftStatus | null;
-    confirmed?: boolean;
   } | null;
   employer?: { id: string; store: string; employerName: string } | null;
   createdAt: string;
@@ -71,34 +73,37 @@ export interface Shift {
   id: string;
   userId: string;
   shiftName?: string | null;
-  startDate?: string | null;
-  endDate?: string | null;
+  date: string;
   startTime: string;
   endTime: string;
   totalHours: number;
-  breakDuration: number;
   shiftType?: ShiftType | null;
   status?: ShiftStatus | null;
   isActive?: boolean | null;
   isManualEntry: boolean;
-  confirmed: boolean;
   notes?: string;
   salaries?: Salary[];
   createdAt?: string;
 }
 
+export type CalendarEntryType = 'event' | 'memo' | 'shift';
+
 export interface CalendarEntry {
   id: string;
   userId: string;
   date: string;
+  type: CalendarEntryType;
   title: string;
   shiftId?: string | null;
+  employerId?: string | null;
   color?: string | null;
   shift?: {
     id: string;
     shiftName?: string | null;
-    startDate?: string | null;
-    endDate?: string | null;
+    date?: string | null;
+    startTime?: string;
+    endTime?: string;
+    totalHours?: number;
     shiftType?: ShiftType | null;
     status?: ShiftStatus | null;
   } | null;

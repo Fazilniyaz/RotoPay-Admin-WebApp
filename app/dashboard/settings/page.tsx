@@ -1,15 +1,31 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { useAuth } from '@/hooks/useAuth';
-import { User, Globe, Loader2, LogOut, Mail, Check } from 'lucide-react';
-import { getSettings, updateSettings } from '@/lib/services/settings';
+import { User, Globe, Loader2, LogOut, Mail, Check, Camera, Trash2 } from 'lucide-react';
+import {
+  getSettings,
+  updateSettings,
+  updateProfilePicture,
+  removeProfilePicture,
+} from '@/lib/services/settings';
+import { authStore } from '@/store/authStore';
 import { DateFormat, TimeFormat } from '@/store/settingsStore';
 import { currencySymbol, CURRENCIES } from '@/lib/format';
+
+const MAX_IMAGE_BYTES = 5 * 1024 * 1024; // 5 MB
+
+const fileToDataUrl = (file: File) =>
+  new Promise<string>((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result as string);
+    reader.onerror = () => reject(reader.error);
+    reader.readAsDataURL(file);
+  });
 
 const GRADIENT = 'linear-gradient(135deg, #005ea3 0%, #006d30 100%)';
 const primaryStyle = { background: GRADIENT };
@@ -36,8 +52,26 @@ export default function SettingsPage() {
   const [email, setEmail] = useState('');
   const [displayName, setDisplayName] = useState('');
   const [currency, setCurrency] = useState('GBP');
+  const [nativeCurrency, setNativeCurrency] = useState('GBP');
   const [dateFormat, setDateFormat] = useState<DateFormat>('DD/MM/YYYY');
   const [timeFormat, setTimeFormat] = useState<TimeFormat>('24h');
+  const [reportMonths, setReportMonths] = useState(1);
+
+  // Currently saved photo, plus staged (unsaved) photo changes.
+  const [savedPhoto, setSavedPhoto] = useState<string | null>(null);
+  const [pendingPhoto, setPendingPhoto] = useState<string | null>(null);
+  const [removePhoto, setRemovePhoto] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Snapshot of the last-saved values — used to detect unsaved changes.
+  const [initial, setInitial] = useState({
+    displayName: '',
+    currency: 'GBP',
+    nativeCurrency: 'GBP',
+    dateFormat: 'DD/MM/YYYY' as DateFormat,
+    timeFormat: '24h' as TimeFormat,
+    reportMonths: 1,
+  });
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -46,8 +80,21 @@ export default function SettingsPage() {
       setEmail(p.profile.email);
       setDisplayName(p.profile.displayName);
       setCurrency(p.settings.currency);
+      setNativeCurrency(p.settings.nativeCurrency);
       setDateFormat(p.settings.dateFormat);
       setTimeFormat(p.settings.timeFormat);
+      setReportMonths(p.settings.reportMonths);
+      setSavedPhoto(p.profile.profilePicture);
+      setPendingPhoto(null);
+      setRemovePhoto(false);
+      setInitial({
+        displayName: p.profile.displayName,
+        currency: p.settings.currency,
+        nativeCurrency: p.settings.nativeCurrency,
+        dateFormat: p.settings.dateFormat,
+        timeFormat: p.settings.timeFormat,
+        reportMonths: p.settings.reportMonths,
+      });
     } catch {
       toast.error('Failed to load settings');
     } finally {
@@ -59,19 +106,91 @@ export default function SettingsPage() {
     load();
   }, [load]);
 
+  // The avatar to display right now (staged changes win over the saved photo).
+  const currentPhoto = pendingPhoto ?? (removePhoto ? null : savedPhoto);
+
+  const settingsChanged =
+    displayName.trim() !== initial.displayName ||
+    currency !== initial.currency ||
+    nativeCurrency !== initial.nativeCurrency ||
+    dateFormat !== initial.dateFormat ||
+    timeFormat !== initial.timeFormat ||
+    reportMonths !== initial.reportMonths;
+
+  const photoChanged = pendingPhoto !== null || removePhoto;
+  const dirty = settingsChanged || photoChanged;
+
+  const onPickFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    // Reset the input so re-selecting the same file fires onChange again.
+    e.target.value = '';
+    if (!file) return;
+    if (!file.type.startsWith('image/')) {
+      toast.error('Please choose an image file');
+      return;
+    }
+    if (file.size > MAX_IMAGE_BYTES) {
+      toast.error('Image must be 5MB or smaller');
+      return;
+    }
+    try {
+      const dataUrl = await fileToDataUrl(file);
+      setPendingPhoto(dataUrl);
+      setRemovePhoto(false);
+    } catch {
+      toast.error('Could not read the selected image');
+    }
+  };
+
+  const onRemovePhoto = () => {
+    setPendingPhoto(null);
+    setRemovePhoto(true);
+  };
+
+  // Keep the persisted user (sidebar avatar / name) in sync after a save.
+  const syncAuthUser = (dName: string, photo: string | null) => {
+    const u = authStore.getState().user;
+    if (u) authStore.getState().setUser({ ...u, displayName: dName, profilePicture: photo ?? undefined });
+  };
+
   const save = async () => {
     if (!displayName.trim() || displayName.trim().length < 2) {
       toast.error('Display name must be at least 2 characters');
       return;
     }
+    if (!dirty) return;
+
     setSaving(true);
     try {
-      await updateSettings({
-        displayName: displayName.trim(),
-        currency,
-        dateFormat,
-        timeFormat,
-      });
+      let latestPhoto = savedPhoto;
+
+      if (pendingPhoto) {
+        const p = await updateProfilePicture(pendingPhoto);
+        latestPhoto = p.profile.profilePicture;
+      } else if (removePhoto) {
+        const p = await removeProfilePicture();
+        latestPhoto = p.profile.profilePicture;
+      }
+
+      if (settingsChanged) {
+        await updateSettings({
+          displayName: displayName.trim(),
+          currency,
+          nativeCurrency,
+          dateFormat,
+          timeFormat,
+          reportMonths,
+        });
+      }
+
+      // Commit the new saved state locally.
+      setSavedPhoto(latestPhoto);
+      setPendingPhoto(null);
+      setRemovePhoto(false);
+      setDisplayName(displayName.trim());
+      setInitial({ displayName: displayName.trim(), currency, nativeCurrency, dateFormat, timeFormat, reportMonths });
+      syncAuthUser(displayName.trim(), latestPhoto);
+
       toast.success('Settings saved');
     } catch (err: any) {
       toast.error(err?.response?.data?.message || 'Save failed');
@@ -124,14 +243,53 @@ export default function SettingsPage() {
 
               <div className="flex items-center gap-4 mb-6">
                 <div
-                  className="w-16 h-16 rounded-[10px] flex items-center justify-center text-white text-xl font-bold flex-shrink-0"
+                  className="w-16 h-16 rounded-[10px] flex items-center justify-center text-white text-xl font-bold flex-shrink-0 overflow-hidden"
                   style={primaryStyle}
                 >
-                  {initials(displayName || 'U')}
+                  {currentPhoto ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={currentPhoto}
+                      alt="Profile"
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    initials(displayName || 'U')
+                  )}
                 </div>
-                <p className="text-xs text-gray-400">
-                  Profile photo changes aren&apos;t available here yet.
-                </p>
+
+                <div className="flex flex-col gap-2">
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => fileInputRef.current?.click()}
+                      className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-[11px] font-bold uppercase tracking-widest text-[#005ea3] border border-[#005ea3]/20 hover:bg-[#005ea3]/[0.06] transition-colors"
+                    >
+                      <Camera className="h-3.5 w-3.5" />
+                      {currentPhoto ? 'Change photo' : 'Upload photo'}
+                    </button>
+                    {currentPhoto && (
+                      <button
+                        type="button"
+                        onClick={onRemovePhoto}
+                        className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-[11px] font-bold uppercase tracking-widest text-red-500 border border-red-200 dark:border-red-900/50 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                        Remove
+                      </button>
+                    )}
+                  </div>
+                  <p className="text-[11px] text-gray-400">
+                    JPG, PNG or GIF · max 5MB. Saved when you click Save Changes.
+                  </p>
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/*"
+                    onChange={onPickFile}
+                    className="hidden"
+                  />
+                </div>
               </div>
 
               <div className="space-y-5">
@@ -170,9 +328,9 @@ export default function SettingsPage() {
                 <h2 className="font-bold text-[#1b1c1c] dark:text-white">Global Preferences</h2>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
                 <div>
-                  <label className={labelCls}>Currency</label>
+                  <label className={labelCls}>Global Currency</label>
                   <select value={currency} onChange={(e) => setCurrency(e.target.value)} className={inputCls}>
                     {CURRENCIES.map((c) => (
                       <option key={c} value={c}>
@@ -180,6 +338,24 @@ export default function SettingsPage() {
                       </option>
                     ))}
                   </select>
+                  <p className="text-[11px] text-gray-400 mt-1.5">Used across the whole app.</p>
+                </div>
+                <div>
+                  <label className={labelCls}>Native Currency</label>
+                  <select
+                    value={nativeCurrency}
+                    onChange={(e) => setNativeCurrency(e.target.value)}
+                    className={inputCls}
+                  >
+                    {CURRENCIES.map((c) => (
+                      <option key={c} value={c}>
+                        {c} ({currencySymbol(c).trim()})
+                      </option>
+                    ))}
+                  </select>
+                  <p className="text-[11px] text-gray-400 mt-1.5">
+                    Your home currency — powers the “Native Pay” tab on Shifts.
+                  </p>
                 </div>
                 <div>
                   <label className={labelCls}>Date Format</label>
@@ -208,6 +384,18 @@ export default function SettingsPage() {
                       </option>
                     ))}
                   </select>
+                </div>
+                <div>
+                  <label className={labelCls}>Report Range</label>
+                  <select
+                    value={reportMonths}
+                    onChange={(e) => setReportMonths(Number(e.target.value))}
+                    className={inputCls}
+                  >
+                    <option value={1}>Last 1 month</option>
+                    <option value={3}>Last 3 months</option>
+                  </select>
+                  <p className="text-[11px] text-gray-400 mt-1.5">How far back report exports go.</p>
                 </div>
               </div>
 
@@ -244,8 +432,8 @@ export default function SettingsPage() {
               </button>
               <button
                 onClick={save}
-                disabled={saving}
-                className="inline-flex items-center justify-center gap-2 px-8 py-3 text-white text-[11px] font-bold uppercase tracking-widest rounded-lg shadow-[0_4px_14px_rgba(0,94,163,0.25)] hover:-translate-y-0.5 transition-all disabled:opacity-60 disabled:hover:translate-y-0"
+                disabled={saving || !dirty}
+                className="inline-flex items-center justify-center gap-2 px-8 py-3 text-white text-[11px] font-bold uppercase tracking-widest rounded-lg shadow-[0_4px_14px_rgba(0,94,163,0.25)] hover:-translate-y-0.5 transition-all disabled:opacity-60 disabled:hover:translate-y-0 disabled:cursor-not-allowed"
                 style={primaryStyle}
               >
                 <Check className="h-4 w-4" />

@@ -1,9 +1,10 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { authStore } from '@/store/authStore';
+import { getUnreadCount } from '@/lib/services/notifications';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
@@ -47,6 +48,22 @@ export function DesktopSidebar() {
   const { user, logout: handleLogout } = authStore();
   const { logout } = useAuth();
   const [isCollapsed, setIsCollapsed] = useState(false);
+  const [unread, setUnread] = useState(0);
+
+  // Poll the unread notification count for the nav badge.
+  useEffect(() => {
+    let active = true;
+    const fetchCount = () =>
+      getUnreadCount()
+        .then((c) => active && setUnread(c))
+        .catch(() => {});
+    fetchCount();
+    const id = setInterval(fetchCount, 60_000);
+    return () => {
+      active = false;
+      clearInterval(id);
+    };
+  }, [pathname]);
 
   const handleLogoutClick = async () => {
     await logout();
@@ -376,15 +393,52 @@ export function DesktopSidebar() {
           {navItems.map((item) => {
             const Icon = item.icon;
             const isActive = pathname === item.href;
+            const isNotifs = item.href === '/dashboard/notifications';
+            const showBadge = isNotifs && unread > 0;
             return (
               <Link
                 key={item.href}
                 href={item.href}
                 className={`rp-nav-item ${isActive ? 'active' : ''}`}
                 title={isCollapsed ? item.label : undefined}
+                style={isNotifs ? { position: 'relative' } : undefined}
               >
                 <Icon className="rp-nav-icon" strokeWidth={isActive ? 2.5 : 1.75} />
                 <span className="rp-nav-label">{item.label}</span>
+                {showBadge && !isCollapsed && (
+                  <span
+                    style={{
+                      marginLeft: 'auto',
+                      background: isActive ? 'rgba(255,255,255,0.25)' : '#ba1a1a',
+                      color: '#fff',
+                      fontSize: 10,
+                      fontWeight: 700,
+                      borderRadius: 999,
+                      minWidth: 18,
+                      height: 18,
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      padding: '0 5px',
+                      flexShrink: 0,
+                    }}
+                  >
+                    {unread > 99 ? '99+' : unread}
+                  </span>
+                )}
+                {showBadge && isCollapsed && (
+                  <span
+                    style={{
+                      position: 'absolute',
+                      top: 6,
+                      right: 6,
+                      width: 8,
+                      height: 8,
+                      borderRadius: '50%',
+                      background: '#ba1a1a',
+                    }}
+                  />
+                )}
               </Link>
             );
           })}

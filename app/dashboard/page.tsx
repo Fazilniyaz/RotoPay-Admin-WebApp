@@ -21,11 +21,37 @@ import {
   Briefcase,
   ExternalLink,
   LogOut,
+  LogIn,
   PlusCircle,
   UserCog,
   Wallet,
+  Trash2,
+  SquarePen,
+  Coins,
+  Bell,
+  Loader2,
+  type LucideIcon,
 } from 'lucide-react';
 import Link from 'next/link';
+import { Notification } from '@/lib/types';
+import { listNotifications } from '@/lib/services/notifications';
+import { timeAgo } from '@/lib/format';
+
+// Icon + colours per activity type for the dashboard timeline.
+const ACTIVITY_META: Record<string, { icon: LucideIcon; color: string; bg: string }> = {
+  shift_added: { icon: PlusCircle, color: '#0077cc', bg: 'rgba(0,119,204,0.12)' },
+  shift_updated: { icon: SquarePen, color: '#0077cc', bg: 'rgba(0,119,204,0.12)' },
+  shift_removed: { icon: Trash2, color: '#ba1a1a', bg: 'rgba(186,26,26,0.12)' },
+  shift_reminder: { icon: Clock, color: '#005ea3', bg: 'rgba(0,94,163,0.12)' },
+  profile_updated: { icon: UserCog, color: '#888', bg: 'rgba(136,136,136,0.1)' },
+  payment_confirmed: { icon: Wallet, color: '#008557', bg: 'rgba(0,133,87,0.12)' },
+  employee_added: { icon: Building2, color: '#0077cc', bg: 'rgba(0,119,204,0.12)' },
+  wage_added: { icon: Coins, color: '#008557', bg: 'rgba(0,133,87,0.12)' },
+  clock_in: { icon: LogIn, color: '#49e177', bg: 'rgba(73,225,119,0.15)' },
+  clock_out: { icon: LogOut, color: '#49e177', bg: 'rgba(73,225,119,0.15)' },
+};
+const activityMeta = (type: string) =>
+  ACTIVITY_META[type] ?? { icon: Bell, color: '#888', bg: 'rgba(136,136,136,0.1)' };
 
 // ─── Mock Data ────────────────────────────────────────────────────
 const mockStats = [
@@ -81,13 +107,6 @@ const mockUpcomingShifts = [
   { id: 1, employer: 'Coffee Co', date: 'Tomorrow', time: '09:00 – 17:00', icon: '☕' },
   { id: 2, employer: 'Tech Solutions', date: 'Wed, 25 Oct', time: '10:00 – 18:00', icon: '💻' },
   { id: 3, employer: 'Retail Hub', date: 'Fri, 27 Oct', time: '12:00 – 20:00', icon: '🛍️' },
-];
-
-const mockActivities = [
-  { id: 1, icon: LogOut, color: '#49e177', bg: 'rgba(73,225,119,0.15)', text: 'Clocked out from Coffee Co', time: '2 hours ago' },
-  { id: 2, icon: PlusCircle, color: '#0077cc', bg: 'rgba(0,119,204,0.12)', text: 'New shift added: Retail Hub', time: 'Yesterday, 18:45' },
-  { id: 3, icon: UserCog, color: '#888', bg: 'rgba(136,136,136,0.1)', text: 'Profile updated', time: 'Saturday, 14:20' },
-  { id: 4, icon: Wallet, color: '#008557', bg: 'rgba(0,133,87,0.12)', text: 'Payment confirmed: £420.00', time: 'Oct 20, 09:00' },
 ];
 
 const quickActions = [
@@ -225,6 +244,8 @@ export default function DashboardPage() {
   const router = useRouter();
   const { user, isAuthenticated, isHydrated } = authStore();
   const [isLoading, setIsLoading] = useState(true);
+  const [activities, setActivities] = useState<Notification[]>([]);
+  const [activitiesLoading, setActivitiesLoading] = useState(true);
 
   useEffect(() => {
     if (isHydrated) {
@@ -235,6 +256,19 @@ export default function DashboardPage() {
       }
     }
   }, [isAuthenticated, isHydrated, router]);
+
+  // Live recent-activity feed for the dashboard timeline.
+  useEffect(() => {
+    if (!isHydrated || !isAuthenticated) return;
+    let active = true;
+    listNotifications({ limit: 6 })
+      .then((r) => active && setActivities(r.data))
+      .catch(() => {})
+      .finally(() => active && setActivitiesLoading(false));
+    return () => {
+      active = false;
+    };
+  }, [isHydrated, isAuthenticated]);
 
   if (!isHydrated || isLoading || !user) {
     return (
@@ -768,26 +802,37 @@ export default function DashboardPage() {
           {/* Recent Activity */}
           <div className="rp-card">
             <h4 className="rp-card-title">Recent Activity</h4>
-            <div className="rp-timeline">
-              {mockActivities.map((act) => {
-                const Icon = act.icon;
-                return (
-                  <div key={act.id} className="rp-timeline-item">
-                    <div
-                      className="rp-timeline-dot"
-                      style={{ background: act.bg }}
-                    >
-                      <Icon size={12} color={act.color} strokeWidth={2.5} />
+            {activitiesLoading ? (
+              <div style={{ display: 'flex', justifyContent: 'center', padding: '32px 0', color: '#9ca3af' }}>
+                <Loader2 size={20} className="animate-spin" />
+              </div>
+            ) : activities.length === 0 ? (
+              <div style={{ textAlign: 'center', padding: '28px 8px', color: '#9ca3af' }}>
+                <Bell size={22} style={{ margin: '0 auto 8px', opacity: 0.5 }} />
+                <p style={{ fontSize: 13 }}>No activity yet. Your actions will appear here.</p>
+              </div>
+            ) : (
+              <div className="rp-timeline">
+                {activities.map((act) => {
+                  const meta = activityMeta(act.type);
+                  const Icon = meta.icon;
+                  return (
+                    <div key={act.id} className="rp-timeline-item">
+                      <div className="rp-timeline-dot" style={{ background: meta.bg }}>
+                        <Icon size={12} color={meta.color} strokeWidth={2.5} />
+                      </div>
+                      <div>
+                        <p className="rp-timeline-text">{act.message}</p>
+                        <p className="rp-timeline-time">{timeAgo(act.scheduledAt ?? act.createdAt)}</p>
+                      </div>
                     </div>
-                    <div>
-                      <p className="rp-timeline-text">{act.text}</p>
-                      <p className="rp-timeline-time">{act.time}</p>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-            <button className="rp-see-all-btn">See All Activity</button>
+                  );
+                })}
+              </div>
+            )}
+            <Link href="/dashboard/notifications" className="rp-see-all-btn" style={{ display: 'block', textAlign: 'center', textDecoration: 'none' }}>
+              See All Activity
+            </Link>
           </div>
         </div>
       </div>

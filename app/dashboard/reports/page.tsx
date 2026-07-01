@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { toast } from 'sonner';
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
 import {
   Download,
@@ -12,9 +13,17 @@ import {
   Clock,
   Gauge,
   CalendarRange,
+  FileSpreadsheet,
+  FileText,
+  FileType2,
+  Loader2,
+  ChevronDown,
   type LucideIcon,
 } from 'lucide-react';
 import { money } from '@/lib/format';
+import { settingsStore } from '@/store/settingsStore';
+import { generateReport } from '@/lib/services/reports';
+import { exportReport, ReportFormat } from '@/lib/reportExport';
 
 const GRADIENT = 'linear-gradient(135deg, #005ea3 0%, #006d30 100%)';
 const primaryStyle = { background: GRADIENT };
@@ -237,8 +246,33 @@ function YearlyContent() {
 
 const TABS: TabValue[] = ['weekly', 'monthly', 'yearly'];
 
+const EXPORT_FORMATS: { value: ReportFormat; label: string; icon: LucideIcon }[] = [
+  { value: 'excel', label: 'Excel (.xlsx)', icon: FileSpreadsheet },
+  { value: 'csv', label: 'CSV (.csv)', icon: FileType2 },
+  { value: 'pdf', label: 'PDF (.pdf)', icon: FileText },
+];
+
 export default function ReportsPage() {
   const [tab, setTab] = useState<TabValue>('weekly');
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [exporting, setExporting] = useState<ReportFormat | null>(null);
+  const reportMonths = settingsStore((s) => s.reportMonths);
+
+  const handleExport = async (format: ReportFormat) => {
+    setExporting(format);
+    setMenuOpen(false);
+    try {
+      // No months arg → backend uses the saved Report Range setting (authoritative).
+      const data = await generateReport();
+      await exportReport(data, format);
+      const m = data.period.months;
+      toast.success(`Report exported (last ${m} month${m > 1 ? 's' : ''})`);
+    } catch (err: any) {
+      toast.error(err?.response?.data?.message || 'Failed to export report');
+    } finally {
+      setExporting(null);
+    }
+  };
 
   return (
     <DashboardLayout>
@@ -247,15 +281,46 @@ export default function ReportsPage() {
         <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
           <div>
             <h1 className="text-3xl font-extrabold text-[#005ea3]">Reports</h1>
-            <p className="text-sm text-gray-400 mt-0.5">Analyse your earnings and work patterns</p>
+            <p className="text-sm text-gray-400 mt-0.5">
+              Analyse your earnings and work patterns · export covers the last{' '}
+              {reportMonths} month{reportMonths > 1 ? 's' : ''}
+            </p>
           </div>
-          <button
-            className="inline-flex items-center justify-center gap-2 px-5 py-3 text-white text-[11px] font-bold uppercase tracking-widest rounded-lg shadow-[0_4px_14px_rgba(0,94,163,0.25)] hover:-translate-y-0.5 transition-all"
-            style={primaryStyle}
-          >
-            <Download className="h-4 w-4" />
-            Export Report
-          </button>
+          <div className="relative">
+            <button
+              onClick={() => setMenuOpen((o) => !o)}
+              disabled={exporting !== null}
+              className="inline-flex items-center justify-center gap-2 px-5 py-3 text-white text-[11px] font-bold uppercase tracking-widest rounded-lg shadow-[0_4px_14px_rgba(0,94,163,0.25)] hover:-translate-y-0.5 transition-all disabled:opacity-60 disabled:hover:translate-y-0"
+              style={primaryStyle}
+            >
+              {exporting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
+              {exporting ? 'Exporting…' : 'Export Report'}
+              {!exporting && <ChevronDown className="h-4 w-4" />}
+            </button>
+            {menuOpen && (
+              <>
+                <div className="fixed inset-0 z-10" onClick={() => setMenuOpen(false)} />
+                <div className={`${cardCls} absolute right-0 mt-2 w-56 p-1.5 z-20`}>
+                  {EXPORT_FORMATS.map((f) => {
+                    const Icon = f.icon;
+                    return (
+                      <button
+                        key={f.value}
+                        onClick={() => handleExport(f.value)}
+                        className="w-full flex items-center gap-3 px-3 py-2.5 rounded-md text-sm text-[#1b1c1c] dark:text-gray-200 hover:bg-[#005ea3]/[0.06] transition-colors"
+                      >
+                        <Icon className="h-4 w-4 text-[#005ea3]" />
+                        {f.label}
+                      </button>
+                    );
+                  })}
+                  <p className="text-[10px] text-gray-400 px-3 pt-1.5 pb-1">
+                    Last {reportMonths} month{reportMonths > 1 ? 's' : ''} · change in Settings
+                  </p>
+                </div>
+              </>
+            )}
+          </div>
         </div>
 
         {/* Tabs */}

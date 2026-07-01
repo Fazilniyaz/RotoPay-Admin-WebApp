@@ -60,12 +60,8 @@ const initials = (name: string) =>
     .join('')
     .toUpperCase() || '?';
 
-const shiftDateRange = (s: NonNullable<Salary['shift']>) => {
-  if (!s.startDate || !s.endDate) return 'Unscheduled';
-  const a = fmtDate(s.startDate);
-  const b = fmtDate(s.endDate);
-  return a === b ? a : `${a} – ${b}`;
-};
+const shiftDateRange = (s: NonNullable<Salary['shift']>) =>
+  s.date ? fmtDate(s.date) : 'Unscheduled';
 
 export default function EmployersPage() {
   const [employers, setEmployers] = useState<Employer[]>([]);

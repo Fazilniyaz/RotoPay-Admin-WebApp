@@ -1,18 +1,21 @@
 // lib/services/calendar.ts
 // CRUD for calendar entries (custom day notes, optionally linked to a shift).
 import api from '@/lib/axios';
-import { ApiResponse, CalendarEntry } from '@/lib/types';
+import { ApiResponse, CalendarEntry, CalendarEntryType } from '@/lib/types';
 
 export interface CalendarInput {
   date: string; // ISO
+  type: CalendarEntryType;
   title: string; // ≤ 15 words
   shiftId?: string | null;
+  employerId?: string | null;
   color?: string | null;
 }
 
 export async function listCalendar(params?: {
   from?: string;
   to?: string;
+  employerId?: string;
 }): Promise<CalendarEntry[]> {
   const res = await api.get<ApiResponse<CalendarEntry[]>>('/calendar', { params });
   return res.data.data ?? [];

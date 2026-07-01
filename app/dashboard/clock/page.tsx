@@ -39,7 +39,7 @@ const initials = (name?: string | null) =>
 
 const salaryLabel = (s: Salary) => {
   const emp = s.employer?.employerName ?? 'Unknown';
-  const when = s.shift?.startDate ? fmtDate(s.shift.startDate) : 'no shift';
+  const when = s.shift?.date ? fmtDate(s.shift.date) : 'no shift';
   const rate = s.hourlyPayRate != null ? `${currencySymbol()}${s.hourlyPayRate}/h` : '—';
   return `${emp} · ${when} · ${rate}`;
 };
@@ -286,7 +286,7 @@ export default function ClockPage() {
                                   {name}
                                 </p>
                                 <p className="text-[11px] text-[#707783] dark:text-gray-400 truncate">
-                                  {s.salary?.shift?.startDate ? fmtDate(s.salary.shift.startDate) : 'No shift'} · in{' '}
+                                  {s.salary?.shift?.date ? fmtDate(s.salary.shift.date) : 'No shift'} · in{' '}
                                   {fmtTime(s.clockInTime)}
                                 </p>
                               </div>
