@@ -12,28 +12,23 @@ import {
   Trash2,
   Loader2,
   CalendarRange,
-  Wallet,
   Search,
   Wallet2,
   Building2,
   ArrowRight,
   ArrowLeft,
-  Coins,
 } from 'lucide-react';
-import { Employer, Shift, ShiftStatus, WageRateType, Salary } from '@/lib/types';
+import { Employer, Shift, ShiftStatus, Salary } from '@/lib/types';
 import { listEmployers } from '@/lib/services/employers';
 import {
   listShifts,
   createShift,
   updateShift,
   deleteShift,
-  getShiftAnalytics,
-  ShiftAnalytics,
 } from '@/lib/services/shifts';
 import { listSalaries, createSalary } from '@/lib/services/salaries';
-import { getRate } from '@/lib/services/currency';
 import { settingsStore } from '@/store/settingsStore';
-import { money, moneyIn, currencySymbol, CURRENCIES, fmtDateShort as fmtDate, fmtTime } from '@/lib/format';
+import { money, currencySymbol, CURRENCIES, fmtDateShort as fmtDate, fmtTime } from '@/lib/format';
 
 const labelCls = 'block text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2';
 const inputCls =
@@ -83,16 +78,16 @@ const STATUS_FILTERS: Array<{ value: Filter; label: string }> = [
   { value: 'wages', label: 'Wages' },
 ];
 
-const RATE_TYPES: WageRateType[] = ['hourly', 'weekly', 'monthly'];
+// Preset label colours for shifts (rendered on the calendar).
+const SHIFT_COLORS = ['#005ea3', '#006d30', '#b45309', '#7c3aed', '#0891b2', '#be123c'];
 
 interface ShiftForm {
   shiftName: string;
-  date: string;
   startTime: string;
   endTime: string;
-  totalHours: string;
   typeChoice: string; // preset value or 'custom'
   customType: string;
+  color: string;
   notes: string;
 }
 
@@ -100,28 +95,38 @@ const todayInput = () => new Date().toISOString().slice(0, 10);
 
 const emptyForm = (): ShiftForm => ({
   shiftName: '',
-  date: todayInput(),
   startTime: '09:00',
   endTime: '17:00',
-  totalHours: '8',
   typeChoice: 'day',
   customType: '',
+  color: SHIFT_COLORS[0],
   notes: '',
 });
 
 // ── date/time helpers ──────────────────────────
 const combineISO = (date: string, time: string) => new Date(`${date}T${time}`).toISOString();
-const toDateInput = (iso: string) => new Date(iso).toISOString().slice(0, 10);
 const toTimeInput = (iso: string) => {
   const d = new Date(iso);
   return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
 };
 
-// Local preview of the status the backend will derive (overnight-aware).
-const previewStatus = (date: string, startTime: string, endTime: string): ShiftStatus | null => {
-  if (!date || !startTime || !endTime) return null;
-  const start = new Date(`${date}T${startTime}`);
-  let end = new Date(`${date}T${endTime}`);
+// Hours between two HH:mm strings for today (overnight-aware), 2dp.
+const hoursBetween = (startTime: string, endTime: string): number => {
+  const today = todayInput();
+  const start = new Date(`${today}T${startTime}`).getTime();
+  let end = new Date(`${today}T${endTime}`).getTime();
+  if (isNaN(start) || isNaN(end)) return 0;
+  if (end <= start) end += 86_400_000; // overnight
+  return Math.round(((end - start) / 3_600_000) * 100) / 100;
+};
+
+// Local preview of the status the backend will derive (overnight-aware). A shift
+// is always "today".
+const previewStatus = (startTime: string, endTime: string): ShiftStatus | null => {
+  if (!startTime || !endTime) return null;
+  const today = todayInput();
+  const start = new Date(`${today}T${startTime}`);
+  let end = new Date(`${today}T${endTime}`);
   if (isNaN(start.getTime()) || isNaN(end.getTime())) return null;
   if (end <= start) end = new Date(end.getTime() + 86_400_000);
   const now = new Date();
@@ -130,23 +135,14 @@ const previewStatus = (date: string, startTime: string, endTime: string): ShiftS
   return 'isActive';
 };
 
-const rateSuffix: Record<WageRateType, string> = { hourly: '/hr', weekly: '/wk', monthly: '/mo' };
+// Wages are hourly-only now — show the rate per hour.
 const wageAmount = (w: Salary) =>
-  `${currencySymbol(w.currency ?? undefined)}${(w.salary ?? 0).toLocaleString()}${
-    rateSuffix[(w.rateType ?? 'hourly') as WageRateType]
-  }`;
+  `${currencySymbol(w.currency ?? undefined)}${(w.hourlyPayRate ?? 0).toLocaleString()}/hr`;
 
 export default function ShiftsPage() {
   const [shifts, setShifts] = useState<Shift[]>([]);
   const [employers, setEmployers] = useState<Employer[]>([]);
   const [wages, setWages] = useState<Salary[]>([]);
-  const [analytics, setAnalytics] = useState<ShiftAnalytics | null>(null);
-  // Live global→native conversion of Total Pay.
-  const [native, setNative] = useState<{ pay: number | null; code: string; rate: number | null }>({
-    pay: null,
-    code: 'GBP',
-    rate: null,
-  });
   const [loading, setLoading] = useState(true);
 
   const [filter, setFilter] = useState<Filter>('all');
@@ -165,7 +161,6 @@ export default function ShiftsPage() {
   const [wageStep, setWageStep] = useState<1 | 2>(1);
   const [wageShiftId, setWageShiftId] = useState('');
   const [wageEmployerId, setWageEmployerId] = useState('');
-  const [wageRate, setWageRate] = useState<WageRateType>('hourly');
   const [wageCurrency, setWageCurrency] = useState('GBP');
   const [wageValue, setWageValue] = useState('');
   const [wageSaving, setWageSaving] = useState(false);
@@ -173,31 +168,14 @@ export default function ShiftsPage() {
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const [shiftRes, empRes, wageRes, analyticsRes] = await Promise.all([
+      const [shiftRes, empRes, wageRes] = await Promise.all([
         listShifts({ limit: 100 }),
         listEmployers({ limit: 100 }),
         listSalaries({ limit: 100 }),
-        getShiftAnalytics(),
       ]);
       setShifts(shiftRes.data);
       setEmployers(empRes.data);
       setWages(wageRes.data);
-      setAnalytics(analyticsRes);
-
-      // Live-convert Total Pay (global currency) into the native currency.
-      const globalCode = settingsStore.getState().currency;
-      const nativeCode = settingsStore.getState().nativeCurrency || globalCode;
-      const total = analyticsRes.totalPay;
-      if (nativeCode === globalCode) {
-        setNative({ pay: total, code: globalCode, rate: 1 });
-      } else {
-        try {
-          const r = await getRate(globalCode, nativeCode);
-          setNative({ pay: total * r.rate, code: nativeCode, rate: r.rate });
-        } catch {
-          setNative({ pay: null, code: nativeCode, rate: null });
-        }
-      }
     } catch {
       toast.error('Failed to load shifts');
     } finally {
@@ -208,19 +186,6 @@ export default function ShiftsPage() {
   useEffect(() => {
     load();
   }, [load]);
-
-  // Auto-calculate totalHours from date + start/end (overnight-aware).
-  useEffect(() => {
-    const { date, startTime, endTime } = form;
-    if (!date || !startTime || !endTime) return;
-    const start = new Date(`${date}T${startTime}`).getTime();
-    let end = new Date(`${date}T${endTime}`).getTime();
-    if (isNaN(start) || isNaN(end)) return;
-    if (end <= start) end += 86_400_000; // overnight
-    const hours = (end - start) / 3_600_000;
-    if (hours > 0) setForm((f) => ({ ...f, totalHours: String(Math.round(hours * 100) / 100) }));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [form.date, form.startTime, form.endTime]);
 
   const openCreate = () => {
     setEditing(null);
@@ -234,12 +199,11 @@ export default function ShiftsPage() {
     const isPreset = (PRESET_TYPES as readonly string[]).includes(type);
     setForm({
       shiftName: shift.shiftName ?? '',
-      date: shift.date ? toDateInput(shift.date) : todayInput(),
       startTime: toTimeInput(shift.startTime),
       endTime: toTimeInput(shift.endTime),
-      totalHours: String(shift.totalHours ?? 0),
       typeChoice: isPreset ? type : 'custom',
       customType: isPreset ? '' : type,
+      color: shift.color ?? SHIFT_COLORS[0],
       notes: shift.notes ?? '',
     });
     setModalOpen(true);
@@ -249,9 +213,9 @@ export default function ShiftsPage() {
     form.typeChoice === 'custom' ? form.customType.trim() : form.typeChoice;
 
   const submit = async () => {
-    const { date, startTime, endTime } = form;
-    if (!date || !startTime || !endTime) {
-      toast.error('Date, start and end time are required');
+    const { startTime, endTime } = form;
+    if (!startTime || !endTime) {
+      toast.error('Start and end time are required');
       return;
     }
     const type = resolvedType();
@@ -262,13 +226,15 @@ export default function ShiftsPage() {
 
     setSaving(true);
     try {
+      // A shift is always "today" — the date is set server-side; we only send the
+      // times (built against today) so the backend can derive hours + validate.
+      const today = todayInput();
       const base = {
         shiftName: form.shiftName.trim() || undefined,
-        date: new Date(date).toISOString(),
-        startTime: combineISO(date, startTime),
-        endTime: combineISO(date, endTime),
-        totalHours: Number(form.totalHours) || 0,
+        startTime: combineISO(today, startTime),
+        endTime: combineISO(today, endTime),
         shiftType: type,
+        color: form.color,
         notes: form.notes.trim() || undefined,
       };
 
@@ -308,16 +274,15 @@ export default function ShiftsPage() {
     setWageStep(1);
     setWageShiftId('');
     setWageEmployerId('');
-    setWageRate('hourly');
     setWageCurrency(settingsStore.getState().currency || 'GBP');
     setWageValue('');
     setWageOpen(true);
   };
 
   const submitWage = async () => {
-    const value = Number(wageValue);
-    if (!wageValue || isNaN(value) || value < 0) {
-      toast.error('Enter a valid wage value');
+    const rate = Number(wageValue);
+    if (!wageValue || isNaN(rate) || rate < 0) {
+      toast.error('Enter a valid hourly rate');
       return;
     }
     setWageSaving(true);
@@ -325,8 +290,8 @@ export default function ShiftsPage() {
       await createSalary({
         shiftId: wageShiftId,
         employerId: wageEmployerId,
-        salary: value,
-        rateType: wageRate,
+        hourlyPayRate: rate,
+        rateType: 'hourly',
         currency: wageCurrency,
       });
       toast.success('Wage created');
@@ -338,6 +303,13 @@ export default function ShiftsPage() {
       setWageSaving(false);
     }
   };
+
+  // Live per-day pay preview for the wage form (rate × selected shift's hours).
+  const wageShift = shifts.find((s) => s.id === wageShiftId);
+  const wagePerDay =
+    wageShift && wageValue && !isNaN(Number(wageValue))
+      ? Number(wageValue) * (wageShift.totalHours ?? 0)
+      : null;
 
   const shiftLabel = (s?: Shift | Salary['shift']) =>
     s ? s.shiftName || `${s.shiftType ?? 'Shift'} · ${fmtDate(s.date)}` : 'Shift';
@@ -367,7 +339,8 @@ export default function ShiftsPage() {
     );
   }, [wages, search]);
 
-  const formPreview = previewStatus(form.date, form.startTime, form.endTime);
+  const formPreview = previewStatus(form.startTime, form.endTime);
+  const formHours = hoursBetween(form.startTime, form.endTime);
   const wageStep1Valid = wageShiftId && wageEmployerId;
 
   return (
@@ -378,8 +351,7 @@ export default function ShiftsPage() {
           <div>
             <h1 className="text-3xl font-extrabold text-[#005ea3]">Shifts</h1>
             <p className="text-sm text-gray-400 mt-0.5">
-              {shifts.length} shift{shifts.length === 1 ? '' : 's'} ·{' '}
-              {analytics?.totalHours ?? 0} total hours
+              {shifts.length} shift{shifts.length === 1 ? '' : 's'} · earnings insights moved to the Earnings module
             </p>
           </div>
           <div className="flex gap-2">
@@ -393,53 +365,6 @@ export default function ShiftsPage() {
             </button>
           </div>
         </div>
-
-        {/* Analytics cards (Total Hours + pay tabs + native pay) */}
-        {analytics && (
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-            {[
-              { label: 'Total Hours', value: `${analytics.totalHours}h`, icon: Clock, caption: '' },
-              { label: 'This Month Pay', value: money(analytics.thisMonthPay), icon: CalendarRange, caption: '' },
-              { label: 'Total Pay', value: money(analytics.totalPay), icon: Wallet, caption: '' },
-              {
-                label: 'Native Pay',
-                value: native.pay == null ? '—' : moneyIn(native.code, native.pay),
-                icon: Coins,
-                caption:
-                  native.rate == null
-                    ? 'Rate unavailable'
-                    : native.rate === 1
-                    ? 'Same as global'
-                    : `1 ${settingsStore.getState().currency} = ${native.rate.toFixed(2)} ${native.code}`,
-              },
-            ].map((card) => {
-              const Icon = card.icon;
-              return (
-                <div key={card.label} className={`${cardCls} p-5 sm:p-6`}>
-                  <div className="flex items-start justify-between gap-2">
-                    <div className="min-w-0">
-                      <p className="text-[11px] font-bold uppercase tracking-[0.07em] text-[#707783] dark:text-gray-400 mb-1.5">
-                        {card.label}
-                      </p>
-                      <p className="font-mono text-xl sm:text-2xl font-medium text-[#005ea3] dark:text-[#a0c9ff] truncate">
-                        {card.value}
-                      </p>
-                      {card.caption && (
-                        <p className="text-[10px] text-gray-400 mt-1 truncate">{card.caption}</p>
-                      )}
-                    </div>
-                    <div
-                      className="w-10 h-10 rounded-[10px] flex items-center justify-center flex-shrink-0 shadow-sm"
-                      style={{ background: GRADIENT }}
-                    >
-                      <Icon className="h-5 w-5 text-white" strokeWidth={2} />
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        )}
 
         {/* Filter + search bar */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
@@ -503,17 +428,18 @@ export default function ShiftsPage() {
                       <Building2 className="h-5 w-5 text-white" />
                     </div>
                     <div className="min-w-0">
+                      {/* Shift name first (bold), then the employee. */}
                       <p className="font-bold text-sm text-[#1b1c1c] dark:text-white truncate">
-                        {w.employer?.employerName ?? 'Unassigned'}
+                        {shiftLabel(w.shift)}
                       </p>
                       <p className="text-xs text-[#707783] dark:text-gray-400 truncate">
-                        {shiftLabel(w.shift)}
+                        {w.employer?.employerName ?? 'Unassigned'}
                       </p>
                     </div>
                   </div>
                   <div className="flex items-center justify-between border-t border-[#005ea3]/[0.06] dark:border-white/5 pt-3">
                     <span className="text-[10px] font-bold uppercase tracking-wider text-[#707783] dark:text-gray-400">
-                      {w.rateType ?? 'hourly'}
+                      Today {money(w.salary)}
                     </span>
                     <span className="font-mono text-lg font-semibold text-[#005ea3] dark:text-[#a0c9ff]">
                       {wageAmount(w)}
@@ -655,26 +581,19 @@ export default function ShiftsPage() {
             />
           </div>
 
-          <div>
-            <label className={labelCls}>Date</label>
-            <input
-              type="date"
-              value={form.date}
-              onChange={(e) => setForm({ ...form, date: e.target.value })}
-              className={inputCls}
-            />
+          <div className="flex items-center gap-2 text-xs flex-wrap">
+            <span className="text-gray-400">A shift is always for today.</span>
+            {formPreview && (
+              <>
+                <span className="text-gray-400">Status will be</span>
+                <span
+                  className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${statusMeta[formPreview].cls}`}
+                >
+                  {statusMeta[formPreview].label}
+                </span>
+              </>
+            )}
           </div>
-
-          {formPreview && (
-            <div className="flex items-center gap-2 text-xs">
-              <span className="text-gray-400">Status will be</span>
-              <span
-                className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${statusMeta[formPreview].cls}`}
-              >
-                {statusMeta[formPreview].label}
-              </span>
-            </div>
-          )}
 
           <div className="grid grid-cols-2 gap-4">
             <div>
@@ -699,15 +618,10 @@ export default function ShiftsPage() {
 
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className={labelCls}>Total Hours</label>
-              <input
-                type="number"
-                min={0}
-                step="0.25"
-                value={form.totalHours}
-                onChange={(e) => setForm({ ...form, totalHours: e.target.value })}
-                className={`${inputCls} font-mono`}
-              />
+              <label className={labelCls}>Total Hours (auto)</label>
+              <div className={`${inputCls} font-mono bg-gray-100 dark:bg-gray-800/60 text-[#005ea3] dark:text-[#a0c9ff]`}>
+                {formHours}h
+              </div>
             </div>
             <div>
               <label className={labelCls}>Shift Type</label>
@@ -738,6 +652,25 @@ export default function ShiftsPage() {
               />
             </div>
           )}
+
+          {/* Shift label colour — shown for this shift on the calendar. */}
+          <div>
+            <label className={labelCls}>Label Colour</label>
+            <div className="flex items-center gap-2.5">
+              {SHIFT_COLORS.map((c) => (
+                <button
+                  key={c}
+                  type="button"
+                  onClick={() => setForm({ ...form, color: c })}
+                  aria-label={`Colour ${c}`}
+                  className={`w-8 h-8 rounded-full transition-transform ${
+                    form.color === c ? 'ring-2 ring-offset-2 ring-[#005ea3] scale-110 dark:ring-offset-[#1f2937]' : 'hover:scale-105'
+                  }`}
+                  style={{ background: c }}
+                />
+              ))}
+            </div>
+          </div>
 
           <div>
             <label className={labelCls}>Notes (optional)</label>
@@ -842,38 +775,22 @@ export default function ShiftsPage() {
           </div>
         ) : (
           <div className="space-y-5">
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className={labelCls}>Wage Type</label>
-                <select
-                  value={wageRate}
-                  onChange={(e) => setWageRate(e.target.value as WageRateType)}
-                  className={inputCls}
-                >
-                  {RATE_TYPES.map((r) => (
-                    <option key={r} value={r}>
-                      {r[0].toUpperCase() + r.slice(1)}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <label className={labelCls}>Currency</label>
-                <select
-                  value={wageCurrency}
-                  onChange={(e) => setWageCurrency(e.target.value)}
-                  className={inputCls}
-                >
-                  {CURRENCIES.map((c) => (
-                    <option key={c} value={c}>
-                      {c} ({currencySymbol(c).trim()})
-                    </option>
-                  ))}
-                </select>
-              </div>
+            <div>
+              <label className={labelCls}>Currency</label>
+              <select
+                value={wageCurrency}
+                onChange={(e) => setWageCurrency(e.target.value)}
+                className={inputCls}
+              >
+                {CURRENCIES.map((c) => (
+                  <option key={c} value={c}>
+                    {c} ({currencySymbol(c).trim()})
+                  </option>
+                ))}
+              </select>
             </div>
             <div>
-              <label className={labelCls}>Value</label>
+              <label className={labelCls}>Hourly Rate</label>
               <div className="relative">
                 <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 text-sm">
                   {currencySymbol(wageCurrency)}
@@ -881,19 +798,31 @@ export default function ShiftsPage() {
                 <input
                   type="number"
                   min={0}
+                  step="0.01"
                   placeholder="0"
                   value={wageValue}
                   onChange={(e) => setWageValue(e.target.value)}
                   className={`${inputCls} pl-9 font-mono`}
                 />
               </div>
-              <p className="text-[11px] text-gray-400 mt-1.5">
-                {wageRate === 'hourly'
-                  ? 'Amount paid per hour.'
-                  : wageRate === 'weekly'
-                  ? 'Amount paid per week.'
-                  : 'Amount paid per month.'}
-              </p>
+              <p className="text-[11px] text-gray-400 mt-1.5">Amount paid per hour.</p>
+            </div>
+
+            {/* Live per-day pay = hourly rate × the shift's hours. */}
+            <div className="rounded-lg bg-[#005ea3]/[0.05] dark:bg-white/5 border border-[#005ea3]/[0.08] dark:border-white/10 p-4 flex items-center justify-between">
+              <div>
+                <p className="text-[10px] font-bold uppercase tracking-widest text-[#707783] dark:text-gray-400">
+                  Today&apos;s Salary
+                </p>
+                <p className="text-[11px] text-gray-400 mt-0.5">
+                  {wageShift ? `${wageShift.totalHours ?? 0}h × ${currencySymbol(wageCurrency)}${wageValue || 0}/hr` : 'Pick a shift'}
+                </p>
+              </div>
+              <span className="font-mono text-xl font-semibold text-[#005ea3] dark:text-[#a0c9ff]">
+                {wagePerDay == null
+                  ? '—'
+                  : `${currencySymbol(wageCurrency)}${(Math.round(wagePerDay * 100) / 100).toLocaleString()}`}
+              </span>
             </div>
           </div>
         )}

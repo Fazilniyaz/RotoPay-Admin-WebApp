@@ -75,7 +75,6 @@ export default function CalendarPage() {
   const [addKind, setAddKind] = useState<'event' | 'memo' | null>(null);
   const [addTitle, setAddTitle] = useState('');
   const [addColor, setAddColor] = useState(PALETTE[0]);
-  const [shiftColor, setShiftColor] = useState(PALETTE[0]);
   const [busy, setBusy] = useState(false);
 
   // Delete entry
@@ -201,7 +200,8 @@ export default function CalendarPage() {
     setAddTitle('');
   };
 
-  const showShiftOnCalendar = (s: Shift) => addEntry('shift', shiftLabelText(s), shiftColor, s.id);
+  // Shifts use the colour chosen when the shift was created (Shifts module).
+  const showShiftOnCalendar = (s: Shift) => addEntry('shift', shiftLabelText(s), s.color ?? '#005ea3', s.id);
 
   const confirmDelete = async () => {
     if (!delTarget) return;
@@ -534,18 +534,9 @@ export default function CalendarPage() {
                 <p className="text-xs text-gray-400">No shifts on this day.</p>
               ) : (
                 <>
-                  <div className="flex items-center gap-1.5 mb-2">
-                    <span className="text-[10px] text-gray-400">Label colour:</span>
-                    {PALETTE.map((c) => (
-                      <button
-                        key={c}
-                        onClick={() => setShiftColor(c)}
-                        className={`w-5 h-5 rounded-full border-2 ${shiftColor === c ? 'border-gray-500' : 'border-transparent'}`}
-                        style={{ backgroundColor: c }}
-                        aria-label={`Colour ${c}`}
-                      />
-                    ))}
-                  </div>
+                  <p className="text-[10px] text-gray-400 mb-2">
+                    Shifts use the colour set when you created them.
+                  </p>
                   <div className="space-y-2">
                     {availableShifts(dayPopup).map((s) => {
                       const shown = dayEntries(dayPopup).some((e) => e.type === 'shift' && e.shiftId === s.id);
@@ -554,13 +545,19 @@ export default function CalendarPage() {
                           key={s.id}
                           className="flex items-center justify-between gap-2 rounded-md border border-[#005ea3]/[0.08] dark:border-white/10 p-3"
                         >
-                          <div className="min-w-0">
-                            <p className="font-semibold text-sm text-[#1b1c1c] dark:text-white truncate">
-                              {shiftLabelText(s)}
-                            </p>
-                            <p className="text-xs text-[#707783] dark:text-gray-400 font-mono">
-                              {fmtTime(s.startTime)} – {fmtTime(s.endTime)} · {s.totalHours}h
-                            </p>
+                          <div className="min-w-0 flex items-center gap-2.5">
+                            <span
+                              className="w-3 h-3 rounded-full flex-shrink-0"
+                              style={{ backgroundColor: s.color ?? '#005ea3' }}
+                            />
+                            <div className="min-w-0">
+                              <p className="font-semibold text-sm text-[#1b1c1c] dark:text-white truncate">
+                                {shiftLabelText(s)}
+                              </p>
+                              <p className="text-xs text-[#707783] dark:text-gray-400 font-mono">
+                                {fmtTime(s.startTime)} – {fmtTime(s.endTime)} · {s.totalHours}h
+                              </p>
+                            </div>
                           </div>
                           <button
                             disabled={shown || busy}

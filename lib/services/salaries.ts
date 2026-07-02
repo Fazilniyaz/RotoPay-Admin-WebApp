@@ -1,21 +1,23 @@
 // lib/services/salaries.ts
 // CRUD calls for the Salary resource (links a shift + employer with a value).
 import api from '@/lib/axios';
-import { ApiResponse, Salary, PaginationMeta, WageRateType } from '@/lib/types';
+import { ApiResponse, Salary, PaginationMeta } from '@/lib/types';
 
 export interface CreateSalaryInput {
   shiftId?: string | null;
   employerId?: string | null;
-  salary: number;
-  rateType?: WageRateType;
+  // The hourly rate. Per-day/total pay is derived server-side as
+  // hourlyPayRate × the linked shift's totalHours.
+  hourlyPayRate: number;
+  rateType?: 'hourly';
   currency?: string;
 }
 
 export interface UpdateSalaryInput {
   shiftId?: string | null;
   employerId?: string | null;
-  salary?: number;
-  rateType?: WageRateType;
+  hourlyPayRate?: number;
+  rateType?: 'hourly';
   currency?: string | null;
 }
 

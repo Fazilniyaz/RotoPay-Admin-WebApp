@@ -11,6 +11,7 @@ export interface SettingsPayload {
     dateFormat: DateFormat;
     timeFormat: TimeFormat;
     reportMonths: number;
+    clockInType: 'automatic' | 'manual';
     theme?: string;
     language?: string;
   };
@@ -23,6 +24,7 @@ export interface UpdateSettingsInput {
   dateFormat?: DateFormat;
   timeFormat?: TimeFormat;
   reportMonths?: number;
+  clockInType?: 'automatic' | 'manual';
 }
 
 // Mirror the API payload into the global store (so formatters update).
@@ -35,6 +37,7 @@ function syncStore(p: SettingsPayload) {
     dateFormat: p.settings.dateFormat,
     timeFormat: p.settings.timeFormat,
     reportMonths: p.settings.reportMonths,
+    clockInType: p.settings.clockInType,
     loaded: true,
   });
 }

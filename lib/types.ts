@@ -78,6 +78,8 @@ export interface Shift {
   endTime: string;
   totalHours: number;
   shiftType?: ShiftType | null;
+  // Label colour chosen at creation; the calendar renders shift entries in it.
+  color?: string | null;
   status?: ShiftStatus | null;
   isActive?: boolean | null;
   isManualEntry: boolean;
@@ -162,6 +164,7 @@ export interface UserSettings {
   currency: string;
   salaryCalcMode: string;
   clockInOutEnabled: boolean;
+  clockInType: 'automatic' | 'manual';
   language: string;
   dateFormat: string;
   timeFormat: string;

@@ -6,7 +6,6 @@ import { DashboardGreeting } from '@/components/dashboard/DashboardGreeting';
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
 import { authStore } from '@/store/authStore';
 import {
-  DollarSign,
   Clock,
   Calendar,
   Building2,
@@ -278,7 +277,7 @@ export default function DashboardPage() {
   const weekTrend = trendFrom(hoursThisWeek, hoursLastWeek);
 
   const stats: StatCardData[] = [
-    { title: 'This Month Earnings', value: money(earnThisMonth), icon: DollarSign, change: monthTrend.change, trend: monthTrend.trend, sub: 'vs last month' },
+    { title: 'This Month Earnings', value: money(earnThisMonth), icon: Wallet, change: monthTrend.change, trend: monthTrend.trend, sub: 'vs last month' },
     { title: 'Work This Week', value: `${Math.round(hoursThisWeek * 10) / 10}h`, icon: Clock, change: weekTrend.change, trend: weekTrend.trend, sub: 'vs last week' },
     { title: 'Upcoming Shifts', value: String(upcomingShifts.length), icon: Calendar, change: null, trend: 'neutral', sub: 'scheduled ahead' },
     { title: 'Active Employers', value: String(activeEmployers), icon: Building2, change: null, trend: 'neutral', sub: 'currently active' },

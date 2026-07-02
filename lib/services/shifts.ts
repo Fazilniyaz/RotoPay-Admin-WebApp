@@ -5,11 +5,13 @@ import { ApiResponse, Shift, ShiftType, ShiftStatus, PaginationMeta } from '@/li
 
 export interface CreateShiftInput {
   shiftName?: string;
-  date: string; // ISO
+  // Optional — the backend defaults to today (a shift is always "today").
+  date?: string; // ISO
   startTime: string; // ISO
   endTime: string; // ISO
-  totalHours: number;
+  totalHours?: number; // derived server-side; optional
   shiftType: ShiftType;
+  color?: string; // hex label colour
   notes?: string;
 }
 

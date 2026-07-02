@@ -6,15 +6,16 @@ import { toast } from 'sonner';
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { useAuth } from '@/hooks/useAuth';
-import { User, Globe, Loader2, LogOut, Mail, Check, Camera, Trash2 } from 'lucide-react';
+import { User, Globe, Loader2, LogOut, Mail, Check, Camera, Trash2, Timer, ArrowRight } from 'lucide-react';
 import {
   getSettings,
   updateSettings,
   updateProfilePicture,
   removeProfilePicture,
 } from '@/lib/services/settings';
+import { getRate } from '@/lib/services/currency';
 import { authStore } from '@/store/authStore';
-import { DateFormat, TimeFormat } from '@/store/settingsStore';
+import { DateFormat, TimeFormat, ClockInType } from '@/store/settingsStore';
 import { currencySymbol, CURRENCIES } from '@/lib/format';
 
 const MAX_IMAGE_BYTES = 5 * 1024 * 1024; // 5 MB
@@ -56,6 +57,11 @@ export default function SettingsPage() {
   const [dateFormat, setDateFormat] = useState<DateFormat>('DD/MM/YYYY');
   const [timeFormat, setTimeFormat] = useState<TimeFormat>('24h');
   const [reportMonths, setReportMonths] = useState(1);
+  const [clockInType, setClockInType] = useState<ClockInType>('automatic');
+
+  // Live global→native conversion rate for the currency comparison preview.
+  const [rate, setRate] = useState<number | null>(null);
+  const [rateLoading, setRateLoading] = useState(false);
 
   // Currently saved photo, plus staged (unsaved) photo changes.
   const [savedPhoto, setSavedPhoto] = useState<string | null>(null);
@@ -71,6 +77,7 @@ export default function SettingsPage() {
     dateFormat: 'DD/MM/YYYY' as DateFormat,
     timeFormat: '24h' as TimeFormat,
     reportMonths: 1,
+    clockInType: 'automatic' as ClockInType,
   });
 
   const load = useCallback(async () => {
@@ -84,6 +91,7 @@ export default function SettingsPage() {
       setDateFormat(p.settings.dateFormat);
       setTimeFormat(p.settings.timeFormat);
       setReportMonths(p.settings.reportMonths);
+      setClockInType(p.settings.clockInType);
       setSavedPhoto(p.profile.profilePicture);
       setPendingPhoto(null);
       setRemovePhoto(false);
@@ -94,6 +102,7 @@ export default function SettingsPage() {
         dateFormat: p.settings.dateFormat,
         timeFormat: p.settings.timeFormat,
         reportMonths: p.settings.reportMonths,
+        clockInType: p.settings.clockInType,
       });
     } catch {
       toast.error('Failed to load settings');
@@ -109,13 +118,31 @@ export default function SettingsPage() {
   // The avatar to display right now (staged changes win over the saved photo).
   const currentPhoto = pendingPhoto ?? (removePhoto ? null : savedPhoto);
 
+  // Fetch the live conversion rate whenever the currency pair changes.
+  useEffect(() => {
+    if (currency === nativeCurrency) {
+      setRate(1);
+      return;
+    }
+    let active = true;
+    setRateLoading(true);
+    getRate(currency, nativeCurrency)
+      .then((r) => active && setRate(r.rate))
+      .catch(() => active && setRate(null))
+      .finally(() => active && setRateLoading(false));
+    return () => {
+      active = false;
+    };
+  }, [currency, nativeCurrency]);
+
   const settingsChanged =
     displayName.trim() !== initial.displayName ||
     currency !== initial.currency ||
     nativeCurrency !== initial.nativeCurrency ||
     dateFormat !== initial.dateFormat ||
     timeFormat !== initial.timeFormat ||
-    reportMonths !== initial.reportMonths;
+    reportMonths !== initial.reportMonths ||
+    clockInType !== initial.clockInType;
 
   const photoChanged = pendingPhoto !== null || removePhoto;
   const dirty = settingsChanged || photoChanged;
@@ -180,6 +207,7 @@ export default function SettingsPage() {
           dateFormat,
           timeFormat,
           reportMonths,
+          clockInType,
         });
       }
 
@@ -188,7 +216,7 @@ export default function SettingsPage() {
       setPendingPhoto(null);
       setRemovePhoto(false);
       setDisplayName(displayName.trim());
-      setInitial({ displayName: displayName.trim(), currency, nativeCurrency, dateFormat, timeFormat, reportMonths });
+      setInitial({ displayName: displayName.trim(), currency, nativeCurrency, dateFormat, timeFormat, reportMonths, clockInType });
       syncAuthUser(displayName.trim(), latestPhoto);
 
       toast.success('Settings saved');
@@ -397,6 +425,56 @@ export default function SettingsPage() {
                   </select>
                   <p className="text-[11px] text-gray-400 mt-1.5">How far back report exports go.</p>
                 </div>
+                <div>
+                  <label className={labelCls}>Clock-in Type</label>
+                  <select
+                    value={clockInType}
+                    onChange={(e) => setClockInType(e.target.value as ClockInType)}
+                    className={inputCls}
+                  >
+                    <option value="automatic">Automatic</option>
+                    <option value="manual">Manual</option>
+                  </select>
+                  <p className="text-[11px] text-gray-400 mt-1.5">
+                    Automatic clocks you in/out when a shift starts and ends.
+                  </p>
+                </div>
+              </div>
+
+              {/* Currency comparison preview (global → native, live rate) */}
+              <div className="mt-5 rounded-md bg-[#005ea3]/[0.04] dark:bg-white/5 border border-[#005ea3]/[0.06] dark:border-white/5 p-4">
+                <div className="flex items-center gap-2 mb-3">
+                  <Timer className="h-3.5 w-3.5 text-[#005ea3] dark:text-[#a0c9ff]" />
+                  <p className="text-[10px] font-bold uppercase tracking-widest text-[#707783] dark:text-gray-400">
+                    Currency Comparison
+                  </p>
+                </div>
+                {currency === nativeCurrency ? (
+                  <p className="text-sm text-gray-400">
+                    Global and native currencies are the same ({currency}).
+                  </p>
+                ) : rateLoading ? (
+                  <div className="flex items-center gap-2 text-gray-400 text-sm">
+                    <Loader2 className="h-4 w-4 animate-spin" /> Fetching live rate…
+                  </div>
+                ) : rate == null ? (
+                  <p className="text-sm text-red-400">Live rate unavailable right now.</p>
+                ) : (
+                  <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+                    <div className="flex items-center gap-2 font-mono text-sm text-[#1b1c1c] dark:text-white">
+                      <span className="font-semibold">1 {currency}</span>
+                      <ArrowRight className="h-4 w-4 text-gray-400" />
+                      <span className="font-semibold text-[#005ea3] dark:text-[#a0c9ff]">
+                        {rate.toFixed(2)} {nativeCurrency}
+                      </span>
+                    </div>
+                    <span className="hidden sm:block text-gray-300">·</span>
+                    <div className="font-mono text-sm text-[#707783] dark:text-gray-400">
+                      {currencySymbol(currency)}100 = {currencySymbol(nativeCurrency)}
+                      {(100 * rate).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    </div>
+                  </div>
+                )}
               </div>
 
               {/* Live preview */}

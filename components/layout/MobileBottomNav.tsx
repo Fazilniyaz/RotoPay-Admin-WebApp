@@ -12,6 +12,7 @@ import {
   CalendarDays,
   BarChart3,
   Bell,
+  Wallet,
   Settings,
   LogOut,
   type LucideIcon,
@@ -33,10 +34,11 @@ const mainTabs = [
 ];
 
 const moreItems = [
-  { href: '/dashboard/employers', label: 'Employers', icon: Building2 },
   { href: '/dashboard/calendar', label: 'Calendar', icon: CalendarDays },
+  { href: '/dashboard/employers', label: 'Employers', icon: Building2 },
   { href: '/dashboard/reports', label: 'Reports', icon: BarChart3 },
   { href: '/dashboard/notifications', label: 'Notifications', icon: Bell },
+  { href: '/dashboard/earnings', label: 'Earnings', icon: Wallet },
   { href: '/dashboard/settings', label: 'Settings', icon: Settings },
 ];
 
