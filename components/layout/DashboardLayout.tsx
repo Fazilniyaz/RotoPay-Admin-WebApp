@@ -5,6 +5,7 @@ import { useMediaQuery } from '@/hooks/useMediaQuery';
 import { DesktopSidebar } from './DesktopSidebar';
 import { MobileBottomNav } from './MobileBottomNav';
 import { getSettings } from '@/lib/services/settings';
+import { useNotificationsSync } from '@/hooks/useNotificationsSync';
 
 interface DashboardLayoutProps {
   children: ReactNode;
@@ -12,6 +13,10 @@ interface DashboardLayoutProps {
 
 export function DashboardLayout({ children }: DashboardLayoutProps) {
   const isMobile = useMediaQuery('(max-width: 768px)');
+
+  // Single notifications poller for the whole dashboard (feeds sidebar badge,
+  // dashboard feed and notifications page; toasts due reminders).
+  useNotificationsSync();
 
   // Load the user's global preferences (currency / date / time) once.
   useEffect(() => {

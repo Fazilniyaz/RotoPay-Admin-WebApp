@@ -51,6 +51,9 @@ const FILTERS: Array<{ value: 'all' | 'active' | 'inactive'; label: string }> = 
 
 const emptyForm: EmployerInput = { employerName: '', store: '', notes: '', isActive: true };
 
+// A user may register at most this many employers (mirrors the backend cap).
+const MAX_EMPLOYERS = 3;
+
 const initials = (name: string) =>
   name
     .split(' ')
@@ -136,7 +139,13 @@ export default function EmployersPage() {
     });
   }, [employers, filter, search]);
 
+  const atLimit = employers.length >= MAX_EMPLOYERS;
+
   const openCreate = () => {
+    if (atLimit) {
+      toast.error(`You can add a maximum of ${MAX_EMPLOYERS} employees.`);
+      return;
+    }
     setEditing(null);
     setForm(emptyForm);
     setModalOpen(true);
@@ -203,13 +212,27 @@ export default function EmployersPage() {
         <div className="flex items-end justify-between">
           <div>
             <h1 className="text-3xl font-extrabold text-[#005ea3]">Employers</h1>
-            <p className="text-sm text-gray-400 mt-0.5">Manage employers and view their shifts</p>
+            <p className="text-sm text-gray-400 mt-0.5">
+              Manage employers and view their shifts · {employers.length}/{MAX_EMPLOYERS} added
+            </p>
           </div>
-          <button onClick={openCreate} className={primaryBtn} style={primaryStyle}>
+          <button
+            onClick={openCreate}
+            disabled={atLimit}
+            title={atLimit ? `Limit of ${MAX_EMPLOYERS} employees reached` : undefined}
+            className={primaryBtn}
+            style={primaryStyle}
+          >
             <Plus className="h-4 w-4" />
             Add Employer
           </button>
         </div>
+
+        {atLimit && (
+          <div className="rounded-lg border border-amber-200 dark:border-amber-900/50 bg-amber-50 dark:bg-amber-900/20 px-4 py-3 text-sm text-amber-700 dark:text-amber-300">
+            You&apos;ve reached the maximum of {MAX_EMPLOYERS} employees. Delete one to add another.
+          </div>
+        )}
 
         {/* Search + filter */}
         <div className="flex flex-col sm:flex-row sm:items-center gap-3">

@@ -1,10 +1,10 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { authStore } from '@/store/authStore';
-import { getUnreadCount } from '@/lib/services/notifications';
+import { notificationsStore } from '@/store/notificationsStore';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
@@ -48,22 +48,8 @@ export function DesktopSidebar() {
   const { user, logout: handleLogout } = authStore();
   const { logout } = useAuth();
   const [isCollapsed, setIsCollapsed] = useState(false);
-  const [unread, setUnread] = useState(0);
-
-  // Poll the unread notification count for the nav badge.
-  useEffect(() => {
-    let active = true;
-    const fetchCount = () =>
-      getUnreadCount()
-        .then((c) => active && setUnread(c))
-        .catch(() => {});
-    fetchCount();
-    const id = setInterval(fetchCount, 60_000);
-    return () => {
-      active = false;
-      clearInterval(id);
-    };
-  }, [pathname]);
+  // Unread count comes from the shared store (kept fresh by useNotificationsSync).
+  const unread = notificationsStore((s) => s.unread);
 
   const handleLogoutClick = async () => {
     await logout();

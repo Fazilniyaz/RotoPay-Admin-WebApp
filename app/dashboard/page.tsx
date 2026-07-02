@@ -33,9 +33,11 @@ import {
   type LucideIcon,
 } from 'lucide-react';
 import Link from 'next/link';
-import { Notification } from '@/lib/types';
-import { listNotifications } from '@/lib/services/notifications';
-import { timeAgo } from '@/lib/format';
+import { Shift } from '@/lib/types';
+import { notificationsStore } from '@/store/notificationsStore';
+import { listShifts } from '@/lib/services/shifts';
+import { listEmployers } from '@/lib/services/employers';
+import { timeAgo, money, fmtDateShort, fmtTime } from '@/lib/format';
 
 // Icon + colours per activity type for the dashboard timeline.
 const ACTIVITY_META: Record<string, { icon: LucideIcon; color: string; bg: string }> = {
@@ -53,61 +55,36 @@ const ACTIVITY_META: Record<string, { icon: LucideIcon; color: string; bg: strin
 const activityMeta = (type: string) =>
   ACTIVITY_META[type] ?? { icon: Bell, color: '#888', bg: 'rgba(136,136,136,0.1)' };
 
-// ─── Mock Data ────────────────────────────────────────────────────
-const mockStats = [
-  {
-    title: 'Total Earnings (This Month)',
-    value: '£2,450.00',
-    icon: DollarSign,
-    change: 12.5,
-    trend: 'up' as const,
-    sub: 'vs last month',
-  },
-  {
-    title: 'Hours Worked (This Week)',
-    value: '38.5h',
-    icon: Clock,
-    change: 4.2,
-    trend: 'up' as const,
-    sub: 'vs last week',
-  },
-  {
-    title: 'Upcoming Shifts (7 Days)',
-    value: '5',
-    icon: Calendar,
-    change: 2.1,
-    trend: 'down' as const,
-    sub: 'vs last period',
-  },
-  {
-    title: 'Active Employers',
-    value: '3',
-    icon: Building2,
-    change: null,
-    trend: 'neutral' as const,
-    sub: 'Stabilized',
-  },
-];
+// ─── Types + derived-data helpers ─────────────────────────────────
+type StatCardData = {
+  title: string;
+  value: string;
+  icon: LucideIcon;
+  change: number | null;
+  trend: 'up' | 'down' | 'neutral';
+  sub: string;
+};
 
-const barData = [
-  { day: 'Mon', income: 60, expense: 30 },
-  { day: 'Tue', income: 85, expense: 45 },
-  { day: 'Wed', income: 40, expense: 20 },
-  { day: 'Thu', income: 95, expense: 10 },
-  { day: 'Fri', income: 70, expense: 50 },
-];
+const DONUT_COLORS = ['#0077cc', '#6aff90', '#008557', '#005ea3', '#37D36B', '#a0c9ff'];
+const WEEKDAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
-const donutSegments = [
-  { label: 'Coffee Co', pct: 45, color: '#0077cc' },
-  { label: 'Tech Solutions', pct: 35, color: '#6aff90' },
-  { label: 'Retail Hub', pct: 20, color: '#008557' },
-];
+// Total pay attached to a shift (a shift can carry several wage rows).
+const shiftEarnings = (s: Shift) => (s.salaries ?? []).reduce((sum, w) => sum + (w.salary ?? 0), 0);
 
-const mockUpcomingShifts = [
-  { id: 1, employer: 'Coffee Co', date: 'Tomorrow', time: '09:00 – 17:00', icon: '☕' },
-  { id: 2, employer: 'Tech Solutions', date: 'Wed, 25 Oct', time: '10:00 – 18:00', icon: '💻' },
-  { id: 3, employer: 'Retail Hub', date: 'Fri, 27 Oct', time: '12:00 – 20:00', icon: '🛍️' },
-];
+// Monday-anchored start of the week for the given date.
+function startOfWeek(d: Date): Date {
+  const x = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+  const offset = (x.getDay() + 6) % 7; // Mon = 0 … Sun = 6
+  x.setDate(x.getDate() - offset);
+  return x;
+}
+
+// Turn a current-vs-previous pair into a StatCard trend.
+function trendFrom(cur: number, prev: number): { change: number | null; trend: 'up' | 'down' | 'neutral' } {
+  if (prev === 0) return cur > 0 ? { change: 100, trend: 'up' } : { change: null, trend: 'neutral' };
+  const pct = Math.round(((cur - prev) / prev) * 100);
+  return { change: Math.abs(pct), trend: pct > 0 ? 'up' : pct < 0 ? 'down' : 'neutral' };
+}
 
 const quickActions = [
   { label: 'Clock In', icon: Timer, href: '/dashboard/clock' },
@@ -117,14 +94,20 @@ const quickActions = [
 ];
 
 // ─── Donut SVG helper ──────────────────────────────────────────────
-function DonutChart() {
+function DonutChart({
+  segments,
+  centerValue,
+}: {
+  segments: { label: string; pct: number; color: string }[];
+  centerValue: string;
+}) {
   const r = 64;
   const cx = 80;
   const cy = 80;
   const circumference = 2 * Math.PI * r;
 
   let cumulative = 0;
-  const slices = donutSegments.map((seg) => {
+  const slices = segments.map((seg) => {
     const offset = circumference * (1 - cumulative / 100);
     const dash = (seg.pct / 100) * circumference;
     cumulative += seg.pct;
@@ -161,35 +144,28 @@ function DonutChart() {
         }}
       >
         <span style={{ fontSize: 10, fontFamily: 'Montserrat', fontWeight: 700, color: '#404752', letterSpacing: '0.08em', textTransform: 'uppercase' }}>Total</span>
-        <span style={{ fontSize: 16, fontFamily: '"JetBrains Mono", monospace', fontWeight: 500, color: '#005ea3' }}>£2,450</span>
+        <span style={{ fontSize: 16, fontFamily: '"JetBrains Mono", monospace', fontWeight: 500, color: '#005ea3' }}>{centerValue}</span>
       </div>
     </div>
   );
 }
 
 // ─── Bar Chart ─────────────────────────────────────────────────────
-function BarChart() {
+function BarChart({ bars }: { bars: { day: string; amount: number }[] }) {
+  const max = Math.max(1, ...bars.map((b) => b.amount));
   return (
     <div style={{ height: 200, display: 'flex', alignItems: 'flex-end', gap: 16, padding: '0 8px' }}>
-      {barData.map((d) => (
+      {bars.map((d) => (
         <div key={d.day} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6, height: '100%' }}>
-          <div style={{ flex: 1, width: '100%', display: 'flex', alignItems: 'flex-end', gap: 3 }}>
+          <div style={{ flex: 1, width: '100%', display: 'flex', alignItems: 'flex-end', justifyContent: 'center' }} className="group" title={money(d.amount)}>
             <div
               style={{
-                flex: 1,
-                height: `${d.income}%`,
+                width: '60%',
+                height: `${d.amount > 0 ? Math.max(4, (d.amount / max) * 100) : 2}%`,
                 background: 'linear-gradient(180deg, #005ea3 0%, #006d30 100%)',
                 borderRadius: '4px 4px 0 0',
                 transition: 'height 0.4s ease',
-              }}
-            />
-            <div
-              style={{
-                flex: 1,
-                height: `${d.expense}%`,
-                background: '#6aff90',
-                borderRadius: '4px 4px 0 0',
-                transition: 'height 0.4s ease',
+                opacity: d.amount > 0 ? 1 : 0.25,
               }}
             />
           </div>
@@ -203,7 +179,7 @@ function BarChart() {
 }
 
 // ─── Stat Card ─────────────────────────────────────────────────────
-function StatCard({ title, value, icon: Icon, change, trend, sub }: typeof mockStats[0]) {
+function StatCard({ title, value, icon: Icon, change, trend, sub }: StatCardData) {
   const isUp = trend === 'up';
   const isDown = trend === 'down';
 
@@ -244,8 +220,13 @@ export default function DashboardPage() {
   const router = useRouter();
   const { user, isAuthenticated, isHydrated } = authStore();
   const [isLoading, setIsLoading] = useState(true);
-  const [activities, setActivities] = useState<Notification[]>([]);
-  const [activitiesLoading, setActivitiesLoading] = useState(true);
+  // Recent-activity feed comes from the shared notifications store.
+  const allActivities = notificationsStore((s) => s.items);
+  const activitiesLoaded = notificationsStore((s) => s.loaded);
+  const activities = allActivities.slice(0, 6);
+  const activitiesLoading = !activitiesLoaded;
+  const [shifts, setShifts] = useState<Shift[]>([]);
+  const [activeEmployers, setActiveEmployers] = useState(0);
 
   useEffect(() => {
     if (isHydrated) {
@@ -257,18 +238,90 @@ export default function DashboardPage() {
     }
   }, [isAuthenticated, isHydrated, router]);
 
-  // Live recent-activity feed for the dashboard timeline.
+  // Shifts (with wage rows) + employers drive every stat, chart and table below.
   useEffect(() => {
     if (!isHydrated || !isAuthenticated) return;
     let active = true;
-    listNotifications({ limit: 6 })
-      .then((r) => active && setActivities(r.data))
-      .catch(() => {})
-      .finally(() => active && setActivitiesLoading(false));
+    Promise.all([listShifts({ limit: 500 }), listEmployers({ limit: 100 })])
+      .then(([shiftRes, empRes]) => {
+        if (!active) return;
+        setShifts(shiftRes.data);
+        setActiveEmployers(empRes.data.filter((e) => e.isActive).length);
+      })
+      .catch(() => {});
     return () => {
       active = false;
     };
   }, [isHydrated, isAuthenticated]);
+
+  // ── Derive every dashboard figure from the loaded shifts ──
+  const now = new Date();
+  const weekStart = startOfWeek(now);
+  const lastWeekStart = new Date(weekStart);
+  lastWeekStart.setDate(lastWeekStart.getDate() - 7);
+  const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+  const lastMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+
+  const inRange = (iso: string, from: Date, to: Date) => {
+    const d = new Date(iso);
+    return d >= from && d < to;
+  };
+
+  // Earnings this/last month; hours this/last week.
+  const earnThisMonth = shifts.filter((s) => inRange(s.date, monthStart, now)).reduce((a, s) => a + shiftEarnings(s), 0);
+  const earnLastMonth = shifts.filter((s) => inRange(s.date, lastMonthStart, monthStart)).reduce((a, s) => a + shiftEarnings(s), 0);
+  const hoursThisWeek = shifts.filter((s) => inRange(s.date, weekStart, now)).reduce((a, s) => a + (s.totalHours ?? 0), 0);
+  const hoursLastWeek = shifts.filter((s) => inRange(s.date, lastWeekStart, weekStart)).reduce((a, s) => a + (s.totalHours ?? 0), 0);
+  const upcomingShifts = shifts.filter((s) => s.status === 'upcoming');
+
+  const monthTrend = trendFrom(earnThisMonth, earnLastMonth);
+  const weekTrend = trendFrom(hoursThisWeek, hoursLastWeek);
+
+  const stats: StatCardData[] = [
+    { title: 'This Month Earnings', value: money(earnThisMonth), icon: DollarSign, change: monthTrend.change, trend: monthTrend.trend, sub: 'vs last month' },
+    { title: 'Work This Week', value: `${Math.round(hoursThisWeek * 10) / 10}h`, icon: Clock, change: weekTrend.change, trend: weekTrend.trend, sub: 'vs last week' },
+    { title: 'Upcoming Shifts', value: String(upcomingShifts.length), icon: Calendar, change: null, trend: 'neutral', sub: 'scheduled ahead' },
+    { title: 'Active Employers', value: String(activeEmployers), icon: Building2, change: null, trend: 'neutral', sub: 'currently active' },
+  ];
+
+  // Weekly earnings per weekday (Mon–Sun) for the bar chart.
+  const weekBars = WEEKDAYS.map((day, i) => {
+    const dayStart = new Date(weekStart);
+    dayStart.setDate(dayStart.getDate() + i);
+    const dayEnd = new Date(dayStart);
+    dayEnd.setDate(dayEnd.getDate() + 1);
+    const amount = shifts.filter((s) => inRange(s.date, dayStart, dayEnd)).reduce((a, s) => a + shiftEarnings(s), 0);
+    return { day, amount };
+  });
+  const weekTotal = weekBars.reduce((a, b) => a + b.amount, 0);
+
+  // Salary overview donut — earnings share per employer (top 5 + Other).
+  const totalEarned = shifts.reduce((a, s) => a + shiftEarnings(s), 0);
+  const byEmployer = new Map<string, number>();
+  for (const s of shifts) {
+    for (const w of s.salaries ?? []) {
+      const name = w.employer?.employerName ?? 'Unassigned';
+      byEmployer.set(name, (byEmployer.get(name) ?? 0) + (w.salary ?? 0));
+    }
+  }
+  const sortedEmployers = [...byEmployer.entries()].filter(([, v]) => v > 0).sort((a, b) => b[1] - a[1]);
+  const topEmployers = sortedEmployers.slice(0, 5);
+  const otherTotal = sortedEmployers.slice(5).reduce((a, [, v]) => a + v, 0);
+  const donutSegments = [
+    ...topEmployers.map(([label, v], i) => ({ label, color: DONUT_COLORS[i % DONUT_COLORS.length], pct: totalEarned > 0 ? Math.round((v / totalEarned) * 100) : 0 })),
+    ...(otherTotal > 0 ? [{ label: 'Other', color: DONUT_COLORS[5], pct: Math.round((otherTotal / totalEarned) * 100) }] : []),
+  ];
+
+  // Next upcoming shifts for the table (soonest first).
+  const upcomingRows = [...upcomingShifts]
+    .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
+    .slice(0, 4)
+    .map((s) => ({
+      id: s.id,
+      employer: s.salaries?.[0]?.employer?.employerName || s.shiftName || s.shiftType || 'Shift',
+      date: fmtDateShort(s.date),
+      time: `${fmtTime(s.startTime)} – ${fmtTime(s.endTime)}`,
+    }));
 
   if (!isHydrated || isLoading || !user) {
     return (
@@ -282,7 +335,6 @@ export default function DashboardPage() {
     );
   }
 
-  const now = new Date();
   const dateStr = now.toLocaleDateString('en-GB', {
     weekday: 'long',
     day: 'numeric',
@@ -699,41 +751,37 @@ export default function DashboardPage() {
 
         {/* Stats Grid */}
         <div className="rp-stats-grid">
-          {mockStats.map((stat, i) => (
+          {stats.map((stat, i) => (
             <StatCard key={i} {...stat} />
           ))}
         </div>
 
         {/* Charts Row */}
         <div className="rp-charts-row">
-          {/* Income & Expense Bar Chart */}
+          {/* Weekly Earnings Bar Chart */}
           <div className="rp-card">
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
-              <h4 className="rp-card-title" style={{ margin: 0 }}>Income &amp; Expense Tracking</h4>
+              <h4 className="rp-card-title" style={{ margin: 0 }}>This Week&apos;s Earnings</h4>
               <div className="rp-chart-legend">
                 <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                   <div className="rp-legend-dot" style={{ background: '#005ea3' }} />
-                  <span className="rp-legend-label">Income</span>
-                </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                  <div className="rp-legend-dot" style={{ background: '#6aff90' }} />
-                  <span className="rp-legend-label">Expenses</span>
+                  <span className="rp-legend-label">Earnings</span>
                 </div>
               </div>
             </div>
-            <BarChart />
+            <BarChart bars={weekBars} />
             <div className="rp-chart-footer">
               <div>
                 <p className="rp-chart-footer-label">Weekly Total</p>
-                <p className="rp-chart-footer-val" style={{ color: '#005ea3' }}>£642.50</p>
+                <p className="rp-chart-footer-val" style={{ color: '#005ea3' }}>{money(weekTotal)}</p>
               </div>
               <div>
-                <p className="rp-chart-footer-label">Monthly Target</p>
-                <p className="rp-chart-footer-val" style={{ color: '#1b1c1c' }}>£3,000.00</p>
+                <p className="rp-chart-footer-label">This Month</p>
+                <p className="rp-chart-footer-val" style={{ color: '#1b1c1c' }}>{money(earnThisMonth)}</p>
               </div>
               <div>
-                <p className="rp-chart-footer-label">Target Pace</p>
-                <p className="rp-chart-footer-val" style={{ color: '#006d30' }}>1.2x</p>
+                <p className="rp-chart-footer-label">Hours / Week</p>
+                <p className="rp-chart-footer-val" style={{ color: '#006d30' }}>{Math.round(hoursThisWeek * 10) / 10}h</p>
               </div>
             </div>
           </div>
@@ -741,20 +789,27 @@ export default function DashboardPage() {
           {/* Salary Donut */}
           <div className="rp-card">
             <h4 className="rp-card-title">Salary Overview</h4>
-            <div className="rp-donut-section">
-              <DonutChart />
-              <div className="rp-donut-legends">
-                {donutSegments.map((seg) => (
-                  <div key={seg.label} className="rp-donut-legend-row">
-                    <div className="rp-donut-legend-left">
-                      <div style={{ width: 10, height: 10, borderRadius: '50%', background: seg.color, flexShrink: 0 }} />
-                      <span>{seg.label}</span>
-                    </div>
-                    <span className="rp-donut-pct">{seg.pct}%</span>
-                  </div>
-                ))}
+            {donutSegments.length === 0 ? (
+              <div style={{ textAlign: 'center', padding: '40px 8px', color: '#9ca3af' }}>
+                <Building2 size={22} style={{ margin: '0 auto 8px', opacity: 0.5 }} />
+                <p style={{ fontSize: 13 }}>No earnings recorded yet.</p>
               </div>
-            </div>
+            ) : (
+              <div className="rp-donut-section">
+                <DonutChart segments={donutSegments} centerValue={money(totalEarned)} />
+                <div className="rp-donut-legends">
+                  {donutSegments.map((seg) => (
+                    <div key={seg.label} className="rp-donut-legend-row">
+                      <div className="rp-donut-legend-left">
+                        <div style={{ width: 10, height: 10, borderRadius: '50%', background: seg.color, flexShrink: 0 }} />
+                        <span>{seg.label}</span>
+                      </div>
+                      <span className="rp-donut-pct">{seg.pct}%</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         </div>
 
@@ -768,35 +823,46 @@ export default function DashboardPage() {
                 View Calendar <ExternalLink size={12} />
               </Link>
             </div>
-            <div style={{ overflowX: 'auto' }}>
-              <table className="rp-table">
-                <thead>
-                  <tr>
-                    <th>Employer</th>
-                    <th>Date</th>
-                    <th>Time</th>
-                    <th style={{ textAlign: 'right' }}>Action</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {mockUpcomingShifts.map((shift) => (
-                    <tr key={shift.id}>
-                      <td>
-                        <div className="rp-employer-cell">
-                          <div className="rp-employer-icon">{shift.icon}</div>
-                          <span className="rp-employer-name">{shift.employer}</span>
-                        </div>
-                      </td>
-                      <td style={{ color: '#707783' }}>{shift.date}</td>
-                      <td className="rp-time-cell">{shift.time}</td>
-                      <td style={{ textAlign: 'right' }}>
-                        <button className="rp-details-btn">Details</button>
-                      </td>
+            {upcomingRows.length === 0 ? (
+              <div style={{ textAlign: 'center', padding: '32px 8px', color: '#9ca3af' }}>
+                <Calendar size={22} style={{ margin: '0 auto 8px', opacity: 0.5 }} />
+                <p style={{ fontSize: 13 }}>No upcoming shifts scheduled.</p>
+              </div>
+            ) : (
+              <div style={{ overflowX: 'auto' }}>
+                <table className="rp-table">
+                  <thead>
+                    <tr>
+                      <th>Employer</th>
+                      <th>Date</th>
+                      <th>Time</th>
+                      <th style={{ textAlign: 'right' }}>Action</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                  </thead>
+                  <tbody>
+                    {upcomingRows.map((shift) => (
+                      <tr key={shift.id}>
+                        <td>
+                          <div className="rp-employer-cell">
+                            <div className="rp-employer-icon">
+                              <Briefcase size={15} color="#005ea3" />
+                            </div>
+                            <span className="rp-employer-name">{shift.employer}</span>
+                          </div>
+                        </td>
+                        <td style={{ color: '#707783' }}>{shift.date}</td>
+                        <td className="rp-time-cell">{shift.time}</td>
+                        <td style={{ textAlign: 'right' }}>
+                          <Link href="/dashboard/calendar" className="rp-details-btn" style={{ textDecoration: 'none' }}>
+                            Details
+                          </Link>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
           </div>
 
           {/* Recent Activity */}

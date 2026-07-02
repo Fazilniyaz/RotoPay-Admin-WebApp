@@ -1,7 +1,5 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
-import { toast } from 'sonner';
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
 import {
   Bell,
@@ -19,13 +17,7 @@ import {
   Loader2,
   type LucideIcon,
 } from 'lucide-react';
-import { Notification } from '@/lib/types';
-import {
-  listNotifications,
-  markNotificationRead,
-  markAllNotificationsRead,
-  deleteNotification,
-} from '@/lib/services/notifications';
+import { notificationsStore } from '@/store/notificationsStore';
 import { timeAgo } from '@/lib/format';
 
 const GRADIENT = 'linear-gradient(135deg, #005ea3 0%, #006d30 100%)';
@@ -53,56 +45,18 @@ const TYPE_META: Record<string, { icon: LucideIcon; bg: string }> = {
 const metaFor = (type: string) => TYPE_META[type] ?? { icon: Bell, bg: GRADIENT };
 
 export default function NotificationsPage() {
-  const [items, setItems] = useState<Notification[]>([]);
-  const [loading, setLoading] = useState(true);
+  // Reads from the shared store kept live by useNotificationsSync.
+  const items = notificationsStore((s) => s.items);
+  const unread = notificationsStore((s) => s.unread);
+  const loaded = notificationsStore((s) => s.loaded);
+  const markAllRead = notificationsStore((s) => s.markAllRead);
+  const markRead = notificationsStore((s) => s.markRead);
+  const remove = notificationsStore((s) => s.remove);
+  const loading = !loaded;
 
-  const load = useCallback(async () => {
-    setLoading(true);
-    try {
-      const res = await listNotifications({ limit: 100 });
-      setItems(res.data);
-    } catch {
-      toast.error('Failed to load notifications');
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    load();
-  }, [load]);
-
-  const unread = items.filter((n) => !n.isRead).length;
-
-  const markAllRead = async () => {
-    setItems((xs) => xs.map((n) => ({ ...n, isRead: true })));
-    try {
-      await markAllNotificationsRead();
-    } catch {
-      toast.error('Failed to update');
-      load();
-    }
-  };
-
-  const toggleRead = async (n: Notification) => {
+  const toggleRead = (n: { id: string; isRead: boolean }) => {
     if (n.isRead) return;
-    setItems((xs) => xs.map((x) => (x.id === n.id ? { ...x, isRead: true } : x)));
-    try {
-      await markNotificationRead(n.id);
-    } catch {
-      load();
-    }
-  };
-
-  const remove = async (id: string) => {
-    const prev = items;
-    setItems((xs) => xs.filter((n) => n.id !== id));
-    try {
-      await deleteNotification(id);
-    } catch {
-      toast.error('Failed to delete');
-      setItems(prev);
-    }
+    markRead(n.id);
   };
 
   return (

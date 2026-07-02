@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
 import {
@@ -17,12 +17,15 @@ import {
   FileText,
   FileType2,
   Loader2,
+  BarChart3,
   ChevronDown,
   type LucideIcon,
 } from 'lucide-react';
 import { money } from '@/lib/format';
 import { settingsStore } from '@/store/settingsStore';
 import { generateReport } from '@/lib/services/reports';
+import { listShifts } from '@/lib/services/shifts';
+import { Shift } from '@/lib/types';
 import { exportReport, ReportFormat } from '@/lib/reportExport';
 
 const GRADIENT = 'linear-gradient(135deg, #005ea3 0%, #006d30 100%)';
@@ -33,29 +36,86 @@ const cardCls =
 
 type TabValue = 'weekly' | 'monthly' | 'yearly';
 
-const DAILY_DATA = [
-  { day: 'Monday', short: 'MON', hours: 8, earnings: 96, barPct: 65 },
-  { day: 'Tuesday', short: 'TUE', hours: 8, earnings: 80, barPct: 45 },
-  { day: 'Wednesday', short: 'WED', hours: 8, earnings: 80, barPct: 85 },
-  { day: 'Thursday', short: 'THU', hours: 7, earnings: 84, barPct: 75 },
-  { day: 'Friday', short: 'FRI', hours: 7, earnings: 84, barPct: 95 },
-  { day: 'Saturday', short: 'SAT', hours: 0, earnings: 0, barPct: 12 },
-  { day: 'Sunday', short: 'SUN', hours: 0, earnings: 0, barPct: 10 },
-];
-const MONTHLY_DATA = [
-  { month: 'Jan', earnings: 1800, hours: 152 },
-  { month: 'Feb', earnings: 2100, hours: 168 },
-  { month: 'Mar', earnings: 1950, hours: 160 },
-  { month: 'Apr', earnings: 2300, hours: 176 },
-  { month: 'May', earnings: 2450, hours: 180 },
-  { month: 'Jun', earnings: 2200, hours: 172 },
-];
-const YEARLY_DATA = [
-  { year: '2021', earnings: 24000, hours: 1920 },
-  { year: '2022', earnings: 27500, hours: 2080 },
-  { year: '2023', earnings: 31200, hours: 2200 },
-  { year: '2024', earnings: 28900, hours: 2040 },
-];
+interface DayDatum { day: string; short: string; hours: number; earnings: number }
+interface MonthDatum { month: string; earnings: number; hours: number }
+interface YearDatum { year: string; earnings: number; hours: number }
+
+const DAY_NAMES = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+const DAY_SHORT = ['MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT', 'SUN'];
+const MONTH_SHORT = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+// Total pay attached to a shift (a shift can carry several wage rows).
+const shiftEarnings = (s: Shift) => (s.salaries ?? []).reduce((sum, w) => sum + (w.salary ?? 0), 0);
+
+// Monday-anchored start of the week for the given date.
+function startOfWeek(d: Date): Date {
+  const x = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+  const offset = (x.getDay() + 6) % 7; // Mon = 0 … Sun = 6
+  x.setDate(x.getDate() - offset);
+  return x;
+}
+
+// Percent change of current vs previous (0 when there's no basis).
+function pctChange(cur: number, prev: number): number {
+  if (prev === 0) return cur > 0 ? 100 : 0;
+  return Math.round(((cur - prev) / prev) * 100);
+}
+
+// ── Build the three report datasets from raw shifts ──
+function buildWeekly(shifts: Shift[], weekStart: Date): DayDatum[] {
+  return DAY_NAMES.map((day, i) => {
+    const from = new Date(weekStart);
+    from.setDate(from.getDate() + i);
+    const to = new Date(from);
+    to.setDate(to.getDate() + 1);
+    const dayShifts = shifts.filter((s) => {
+      const d = new Date(s.date);
+      return d >= from && d < to;
+    });
+    return {
+      day,
+      short: DAY_SHORT[i],
+      hours: Math.round(dayShifts.reduce((a, s) => a + (s.totalHours ?? 0), 0) * 10) / 10,
+      earnings: Math.round(dayShifts.reduce((a, s) => a + shiftEarnings(s), 0) * 100) / 100,
+    };
+  });
+}
+
+function buildMonthly(shifts: Shift[], now: Date): MonthDatum[] {
+  const out: MonthDatum[] = [];
+  for (let i = 5; i >= 0; i--) {
+    const from = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    const to = new Date(now.getFullYear(), now.getMonth() - i + 1, 1);
+    const monthShifts = shifts.filter((s) => {
+      const d = new Date(s.date);
+      return d >= from && d < to;
+    });
+    out.push({
+      month: MONTH_SHORT[from.getMonth()],
+      earnings: Math.round(monthShifts.reduce((a, s) => a + shiftEarnings(s), 0) * 100) / 100,
+      hours: Math.round(monthShifts.reduce((a, s) => a + (s.totalHours ?? 0), 0) * 10) / 10,
+    });
+  }
+  return out;
+}
+
+function buildYearly(shifts: Shift[]): YearDatum[] {
+  const map = new Map<number, { earnings: number; hours: number }>();
+  for (const s of shifts) {
+    const y = new Date(s.date).getFullYear();
+    const e = map.get(y) ?? { earnings: 0, hours: 0 };
+    e.earnings += shiftEarnings(s);
+    e.hours += s.totalHours ?? 0;
+    map.set(y, e);
+  }
+  return [...map.entries()]
+    .sort((a, b) => a[0] - b[0])
+    .map(([year, v]) => ({
+      year: String(year),
+      earnings: Math.round(v.earnings * 100) / 100,
+      hours: Math.round(v.hours * 10) / 10,
+    }));
+}
 
 function TrendBadge({ pct, neutral }: { pct: number; neutral?: boolean }) {
   if (neutral || pct === 0)
@@ -151,18 +211,26 @@ function DataRows({ rows }: { rows: { label: string; hours: number; earnings: nu
   );
 }
 
-function WeeklyContent() {
-  const totalEarnings = DAILY_DATA.reduce((s, d) => s + d.earnings, 0);
-  const totalHours = DAILY_DATA.reduce((s, d) => s + d.hours, 0);
+function WeeklyContent({ data, prevWeek }: { data: DayDatum[]; prevWeek: DayDatum[] }) {
+  const totalEarnings = data.reduce((s, d) => s + d.earnings, 0);
+  const totalHours = data.reduce((s, d) => s + d.hours, 0);
   const avgRate = totalHours > 0 ? +(totalEarnings / totalHours).toFixed(2) : 0;
-  const bars = DAILY_DATA.map((d) => ({ label: d.short, pct: d.barPct, value: money(d.earnings), dim: d.hours === 0 }));
+  const max = Math.max(1, ...data.map((d) => d.earnings));
+  const bars = data.map((d) => ({ label: d.short, pct: Math.round((d.earnings / max) * 90), value: money(d.earnings), dim: d.hours === 0 }));
+
+  const prevEarnings = prevWeek.reduce((s, d) => s + d.earnings, 0);
+  const prevHours = prevWeek.reduce((s, d) => s + d.hours, 0);
+  const prevRate = prevHours > 0 ? prevEarnings / prevHours : 0;
+
+  // The most productive day this week — a genuinely computed insight.
+  const best = data.reduce((a, b) => (b.earnings > a.earnings ? b : a), data[0]);
 
   return (
     <div className="space-y-5">
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <StatCard label="Weekly Earnings" value={money(totalEarnings)} icon={Wallet} trend={12} sub="vs last week" />
-        <StatCard label="Hours Worked" value={`${totalHours}h`} icon={Clock} trend={5} sub="vs last week" />
-        <StatCard label="Avg. Hourly Rate" value={money(avgRate)} icon={Gauge} trend={4} sub="vs last week" />
+        <StatCard label="Weekly Earnings" value={money(totalEarnings)} icon={Wallet} trend={pctChange(totalEarnings, prevEarnings)} sub="vs last week" />
+        <StatCard label="Hours Worked" value={`${totalHours}h`} icon={Clock} trend={pctChange(totalHours, prevHours)} sub="vs last week" />
+        <StatCard label="Avg. Hourly Rate" value={money(avgRate)} icon={Gauge} trend={pctChange(avgRate, prevRate)} sub="vs last week" />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
@@ -177,7 +245,7 @@ function WeeklyContent() {
         </div>
         <div className={`${cardCls} p-5`}>
           <h3 className="font-bold text-[#1b1c1c] dark:text-white mb-3">Detail</h3>
-          <DataRows rows={DAILY_DATA.map((d) => ({ label: d.day.slice(0, 3), hours: d.hours, earnings: d.earnings }))} />
+          <DataRows rows={data.map((d) => ({ label: d.day.slice(0, 3), hours: d.hours, earnings: d.earnings }))} />
         </div>
       </div>
 
@@ -189,9 +257,18 @@ function WeeklyContent() {
           <div>
             <h4 className="font-bold text-sm text-[#1b1c1c] dark:text-white mb-1">Smart Insight</h4>
             <p className="text-sm text-[#404752] dark:text-gray-300 leading-relaxed">
-              You earned <span className="font-mono font-bold text-[#005ea3] dark:text-[#a0c9ff]">18% more</span> this week on
-              Wednesdays by working late shifts. Consider picking up the upcoming Wednesday slot for a potential{' '}
-              <span className="font-mono font-bold text-[#005ea3] dark:text-[#a0c9ff]">{money(9)}</span> bonus.
+              {totalEarnings > 0 ? (
+                <>
+                  Your best day this week was{' '}
+                  <span className="font-mono font-bold text-[#005ea3] dark:text-[#a0c9ff]">{best.day}</span>, earning{' '}
+                  <span className="font-mono font-bold text-[#005ea3] dark:text-[#a0c9ff]">{money(best.earnings)}</span> across{' '}
+                  <span className="font-mono font-bold text-[#005ea3] dark:text-[#a0c9ff]">{best.hours}h</span>. You&apos;re{' '}
+                  {pctChange(totalEarnings, prevEarnings) >= 0 ? 'up' : 'down'}{' '}
+                  <span className="font-mono font-bold text-[#005ea3] dark:text-[#a0c9ff]">{Math.abs(pctChange(totalEarnings, prevEarnings))}%</span> versus last week.
+                </>
+              ) : (
+                <>No earnings recorded this week yet. Add shifts and wages to see insights here.</>
+              )}
             </p>
           </div>
         </div>
@@ -200,44 +277,60 @@ function WeeklyContent() {
   );
 }
 
-function MonthlyContent() {
-  const totalEarnings = MONTHLY_DATA.reduce((s, d) => s + d.earnings, 0);
-  const totalHours = MONTHLY_DATA.reduce((s, d) => s + d.hours, 0);
-  const max = Math.max(...MONTHLY_DATA.map((d) => d.earnings));
+function MonthlyContent({ data }: { data: MonthDatum[] }) {
+  const totalEarnings = data.reduce((s, d) => s + d.earnings, 0);
+  const totalHours = data.reduce((s, d) => s + d.hours, 0);
+  const max = Math.max(1, ...data.map((d) => d.earnings));
+  const peak = data.reduce((a, b) => (b.earnings > a.earnings ? b : a), data[0] ?? { earnings: 0 });
+  // Trend = most recent month vs the one before it.
+  const last = data[data.length - 1]?.earnings ?? 0;
+  const prev = data[data.length - 2]?.earnings ?? 0;
+  const lastH = data[data.length - 1]?.hours ?? 0;
+  const prevH = data[data.length - 2]?.hours ?? 0;
 
   return (
     <div className="space-y-5">
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <StatCard label="Total Earnings (6M)" value={money(totalEarnings)} icon={Wallet} trend={8} sub="6-month view" />
-        <StatCard label="Total Hours (6M)" value={`${totalHours}h`} icon={Clock} trend={3} sub="6-month view" />
-        <StatCard label="Peak Month" value={money(max)} icon={CalendarRange} neutral trend={0} sub="best so far" />
+        <StatCard label="Total Earnings (6M)" value={money(totalEarnings)} icon={Wallet} trend={pctChange(last, prev)} sub="latest vs prior month" />
+        <StatCard label="Total Hours (6M)" value={`${totalHours}h`} icon={Clock} trend={pctChange(lastH, prevH)} sub="latest vs prior month" />
+        <StatCard label="Peak Month" value={money(peak.earnings)} icon={CalendarRange} neutral trend={0} sub="best in 6 months" />
       </div>
       <div className={`${cardCls} p-5`}>
         <h3 className="font-bold text-[#1b1c1c] dark:text-white mb-2">Monthly Earnings</h3>
-        <BarChart bars={MONTHLY_DATA.map((d) => ({ label: d.month, pct: Math.round((d.earnings / max) * 90), value: money(d.earnings) }))} />
+        <BarChart bars={data.map((d) => ({ label: d.month, pct: Math.round((d.earnings / max) * 90), value: money(d.earnings) }))} />
         <div className="mt-4">
-          <DataRows rows={MONTHLY_DATA.map((d) => ({ label: d.month, hours: d.hours, earnings: d.earnings }))} />
+          <DataRows rows={data.map((d) => ({ label: d.month, hours: d.hours, earnings: d.earnings }))} />
         </div>
       </div>
     </div>
   );
 }
 
-function YearlyContent() {
-  const totalEarnings = YEARLY_DATA.reduce((s, d) => s + d.earnings, 0);
-  const max = Math.max(...YEARLY_DATA.map((d) => d.earnings));
+function YearlyContent({ data }: { data: YearDatum[] }) {
+  const totalEarnings = data.reduce((s, d) => s + d.earnings, 0);
+  const max = Math.max(1, ...data.map((d) => d.earnings));
+  const bestYear = data.reduce((a, b) => (b.earnings > a.earnings ? b : a), data[0] ?? { earnings: 0 });
+
+  if (data.length === 0) {
+    return (
+      <div className={`${cardCls} p-10 flex flex-col items-center justify-center text-center`}>
+        <BarChart3 className="h-10 w-10 text-gray-300 mb-3" />
+        <p className="text-sm text-gray-400">No yearly data yet — add shifts to build your history.</p>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-5">
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <StatCard label="Lifetime Earnings" value={money(totalEarnings)} icon={Wallet} sub="all time" />
-        <StatCard label="Best Year" value={money(max)} icon={TrendingUp} sub="peak earnings" />
+        <StatCard label="Best Year" value={money(bestYear.earnings)} icon={TrendingUp} sub={`peak · ${bestYear.year}`} />
       </div>
       <div className={`${cardCls} p-5`}>
         <h3 className="font-bold text-[#1b1c1c] dark:text-white mb-2">Year-on-Year</h3>
-        <BarChart bars={YEARLY_DATA.map((d) => ({ label: d.year, pct: Math.round((d.earnings / max) * 90), value: money(d.earnings) }))} />
+        <BarChart bars={data.map((d) => ({ label: d.year, pct: Math.round((d.earnings / max) * 90), value: money(d.earnings) }))} />
         <div className="mt-4">
-          <DataRows rows={YEARLY_DATA.map((d) => ({ label: d.year, hours: d.hours, earnings: d.earnings }))} />
+          <DataRows rows={data.map((d) => ({ label: d.year, hours: d.hours, earnings: d.earnings }))} />
         </div>
       </div>
     </div>
@@ -257,6 +350,34 @@ export default function ReportsPage() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [exporting, setExporting] = useState<ReportFormat | null>(null);
   const reportMonths = settingsStore((s) => s.reportMonths);
+
+  const [shifts, setShifts] = useState<Shift[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let active = true;
+    listShifts({ limit: 1000 })
+      .then((r) => active && setShifts(r.data))
+      .catch(() => active && toast.error('Failed to load report data'))
+      .finally(() => active && setLoading(false));
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  // Derive the three datasets from the loaded shifts (recomputed on data change).
+  const { weekly, prevWeek, monthly, yearly } = useMemo(() => {
+    const now = new Date();
+    const weekStart = startOfWeek(now);
+    const lastWeekStart = new Date(weekStart);
+    lastWeekStart.setDate(lastWeekStart.getDate() - 7);
+    return {
+      weekly: buildWeekly(shifts, weekStart),
+      prevWeek: buildWeekly(shifts, lastWeekStart),
+      monthly: buildMonthly(shifts, now),
+      yearly: buildYearly(shifts),
+    };
+  }, [shifts]);
 
   const handleExport = async (format: ReportFormat) => {
     setExporting(format);
@@ -341,9 +462,17 @@ export default function ReportsPage() {
           ))}
         </div>
 
-        {tab === 'weekly' && <WeeklyContent />}
-        {tab === 'monthly' && <MonthlyContent />}
-        {tab === 'yearly' && <YearlyContent />}
+        {loading ? (
+          <div className="flex items-center justify-center min-h-[300px] text-gray-400">
+            <Loader2 className="h-6 w-6 animate-spin" />
+          </div>
+        ) : (
+          <>
+            {tab === 'weekly' && <WeeklyContent data={weekly} prevWeek={prevWeek} />}
+            {tab === 'monthly' && <MonthlyContent data={monthly} />}
+            {tab === 'yearly' && <YearlyContent data={yearly} />}
+          </>
+        )}
       </div>
     </DashboardLayout>
   );
