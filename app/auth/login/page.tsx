@@ -147,8 +147,9 @@ export default function LoginPage() {
         .rp-blob-1 { top:-80px; right:-80px; width:320px; height:320px; background:rgba(255,255,255,0.10); filter:blur(60px); }
         .rp-blob-2 { bottom:-80px; left:-80px; width:240px; height:240px; background:rgba(0,194,129,0.20); filter:blur(50px); }
 
-        .rp-banner-logo img { height:52px; width:auto; object-fit:contain; }
-        .rp-banner-tagline  { margin-top:8px; font-size:11px; font-weight:700; letter-spacing:0.05em; text-transform:uppercase; color:rgba(255,255,255,0.70); }
+        /* Pure-white logo on the gradient banner (crisp in light & dark themes). */
+        .rp-banner-logo img { height:52px; width:auto; object-fit:contain; filter:brightness(0) invert(1); }
+        .rp-banner-tagline  { margin-top:10px; font-size:11px; font-weight:700; letter-spacing:0.05em; text-transform:uppercase; color:rgba(255,255,255,0.70); }
         .rp-banner-headline { font-size:26px; font-weight:800; color:#fff; line-height:1.25; margin:0 0 10px; }
         .rp-banner-sub      { font-size:13px; color:rgba(255,255,255,0.80); line-height:1.7; margin:0 0 28px; }
 
@@ -179,6 +180,8 @@ export default function LoginPage() {
 
         .rp-mobile-logo { display:flex; flex-direction:column; align-items:center; gap:6px; margin-bottom:28px; text-align:center; }
         .rp-mobile-logo img { height:44px; width:auto; object-fit:contain; }
+        /* On the dark form background the coloured logo would merge — flip it to white. */
+        .dark .rp-mobile-logo img { filter:brightness(0) invert(1); }
         @media (min-width: 960px) { .rp-mobile-logo { display:none; } }
 
         .rp-heading    { font-size:28px; font-weight:800; color:var(--rp-blue-mid); margin:0 0 4px; line-height:1.2; }

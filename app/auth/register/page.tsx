@@ -302,6 +302,9 @@ const styles = `
     margin-bottom: 28px;
   }
 
+  /* On the dark form background the coloured logo would merge — flip it to white. */
+  .dark .rp-mobile-logo img { filter: brightness(0) invert(1); }
+
   .rp-mobile-logo-icon {
     width: 40px;
     height: 40px;
@@ -875,7 +878,13 @@ export default function RegisterPage() {
               <img
                 src="/rotapay-logo.png"
                 alt="RotaPay Icon"
-                style={{ height: '64px', width: 'auto', objectFit: 'contain' }}
+                style={{
+                  height: '52px',
+                  width: 'auto',
+                  objectFit: 'contain',
+                  // Pure white on the gradient banner (crisp in light & dark themes).
+                  filter: 'brightness(0) invert(1)',
+                }}
               />
             </div>
 

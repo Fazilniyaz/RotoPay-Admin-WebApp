@@ -29,14 +29,19 @@ export function ThemeToggle() {
 
   return (
     <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <Button variant="ghost" size="icon">
-          {theme === 'light' && <Sun className="h-[1.2rem] w-[1.2rem]" />}
-          {theme === 'dark' && <Moon className="h-[1.2rem] w-[1.2rem]" />}
-          {theme === 'system' && <Monitor className="h-[1.2rem] w-[1.2rem]" />}
-          <span className="sr-only">Toggle theme</span>
-        </Button>
-      </DropdownMenuTrigger>
+      {/* Base UI composes via `render`, not Radix-style `asChild` — otherwise the
+          trigger and Button each emit a <button>, nesting them (hydration error). */}
+      <DropdownMenuTrigger
+        render={
+          <Button variant="ghost" size="icon">
+            {theme === 'light' && <Sun className="h-[1.2rem] w-[1.2rem]" />}
+            {theme === 'dark' && <Moon className="h-[1.2rem] w-[1.2rem]" />}
+            {theme === 'system' && <Monitor className="h-[1.2rem] w-[1.2rem]" />}
+            <span className="sr-only">Toggle theme</span>
+          </Button>
+        }
+      />
+
       <DropdownMenuContent align="end">
         <DropdownMenuItem onClick={() => setTheme('light')}>
           <Sun className="mr-2 h-4 w-4" />
