@@ -147,8 +147,11 @@ export default function LoginPage() {
         .rp-blob-1 { top:-80px; right:-80px; width:320px; height:320px; background:rgba(255,255,255,0.10); filter:blur(60px); }
         .rp-blob-2 { bottom:-80px; left:-80px; width:240px; height:240px; background:rgba(0,194,129,0.20); filter:blur(50px); }
 
-        /* Pure-white logo on the gradient banner (crisp in light & dark themes). */
-        .rp-banner-logo img { height:52px; width:auto; object-fit:contain; filter:brightness(0) invert(1); }
+        /* Text wordmark logo — reads crisply on any background, no baked-in image padding. */
+        .rp-wordmark { display:inline-block; font-family:var(--rp-font); font-size:34px; font-weight:800; letter-spacing:-0.02em; line-height:1; }
+        .rp-banner-logo .rp-wordmark { color:#fff; }
+        .rp-wm-rota { color:var(--rp-blue); }
+        .rp-wm-pay  { color:var(--rp-green); }
         .rp-banner-tagline  { margin-top:10px; font-size:11px; font-weight:700; letter-spacing:0.05em; text-transform:uppercase; color:rgba(255,255,255,0.70); }
         .rp-banner-headline { font-size:26px; font-weight:800; color:#fff; line-height:1.25; margin:0 0 10px; }
         .rp-banner-sub      { font-size:13px; color:rgba(255,255,255,0.80); line-height:1.7; margin:0 0 28px; }
@@ -179,9 +182,10 @@ export default function LoginPage() {
         .rp-form-card { width:100%; max-width:420px; animation:rpFadeIn 0.4s ease both; }
 
         .rp-mobile-logo { display:flex; flex-direction:column; align-items:center; gap:6px; margin-bottom:28px; text-align:center; }
-        .rp-mobile-logo img { height:44px; width:auto; object-fit:contain; }
-        /* On the dark form background the coloured logo would merge — flip it to white. */
-        .dark .rp-mobile-logo img { filter:brightness(0) invert(1); }
+        .rp-mobile-logo .rp-wordmark { font-size:30px; }
+        /* Lift the brand colours on the dark form background so they don't merge. */
+        .dark .rp-mobile-logo .rp-wm-rota { color:#4aa3e0; }
+        .dark .rp-mobile-logo .rp-wm-pay  { color:#2ee0a0; }
         @media (min-width: 960px) { .rp-mobile-logo { display:none; } }
 
         .rp-heading    { font-size:28px; font-weight:800; color:var(--rp-blue-mid); margin:0 0 4px; line-height:1.2; }
@@ -277,7 +281,7 @@ export default function LoginPage() {
           <div className="rp-blob rp-blob-2" />
 
           <div className="rp-banner-logo" style={{ position: 'relative', zIndex: 1 }}>
-            <img src="/rotapay-logo.png" alt="RotaPay" />
+            <span className="rp-wordmark">RotaPay</span>
             <p className="rp-banner-tagline">Precision Payroll &amp; Time Management</p>
           </div>
 
@@ -317,7 +321,7 @@ export default function LoginPage() {
 
             {/* Mobile logo */}
             <div className="rp-mobile-logo">
-              <img src="/rotapay-logo.png" alt="RotaPay" />
+              <span className="rp-wordmark"><span className="rp-wm-rota">Rota</span><span className="rp-wm-pay">Pay</span></span>
               <p style={{ fontSize: '11px', fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase', color: 'var(--rp-muted)', margin: 0 }}>
                 Precision Payroll &amp; Time Management
               </p>

@@ -88,6 +88,7 @@ export function DesktopSidebar() {
           display: flex;
           align-items: center;
           justify-content: space-between;
+          gap: 10px;
           padding: 28px 16px 20px;
           border-bottom: 1px solid rgba(0, 94, 163, 0.08);
         }
@@ -97,24 +98,23 @@ export function DesktopSidebar() {
         }
 
         .rp-logo-mark {
-          display: flex;
-          align-items: center;
+          display: block;
+          flex: 1;
+          min-width: 0;
           text-decoration: none;
-          overflow: hidden;
         }
 
         .rp-logo-image-container {
-          height: 40px;
-          overflow: hidden;
           display: flex;
           align-items: center;
           width: 100%;
         }
 
         .rp-logo-image {
-          height: 40px;
-          width: auto;
-          flex-shrink: 0;
+          width: 100%;
+          height: auto;
+          display: block;
+          object-fit: contain;
           transition: filter 0.3s ease;
         }
 
@@ -125,6 +125,7 @@ export function DesktopSidebar() {
         .rp-collapse-btn {
           width: 28px;
           height: 28px;
+          flex-shrink: 0;
           border-radius: 8px;
           border: 1px solid rgba(0, 94, 163, 0.12);
           background: transparent;

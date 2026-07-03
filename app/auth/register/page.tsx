@@ -302,8 +302,22 @@ const styles = `
     margin-bottom: 28px;
   }
 
-  /* On the dark form background the coloured logo would merge — flip it to white. */
-  .dark .rp-mobile-logo img { filter: brightness(0) invert(1); }
+  /* Text wordmark logo — reads crisply on any background, no baked-in image padding. */
+  .rp-wordmark {
+    display: inline-block;
+    font-family: 'Montserrat', sans-serif;
+    font-size: 32px;
+    font-weight: 800;
+    letter-spacing: -0.02em;
+    line-height: 1;
+  }
+  .rp-banner-logo .rp-wordmark { color: #fff; }
+  .rp-wm-rota { color: #005ea3; }
+  .rp-wm-pay  { color: #00c281; }
+  .rp-mobile-logo .rp-wordmark { font-size: 30px; }
+  /* Lift the brand colours on the dark form background so they don't merge. */
+  .dark .rp-mobile-logo .rp-wm-rota { color: #7fb8ea; }
+  .dark .rp-mobile-logo .rp-wm-pay  { color: #3fe0a0; }
 
   .rp-mobile-logo-icon {
     width: 40px;
@@ -875,21 +889,11 @@ export default function RegisterPage() {
 
             {/* Logo */}
             <div className="rp-banner-logo">
-              <img
-                src="/rotapay-logo.png"
-                alt="RotaPay Icon"
-                style={{
-                  height: '52px',
-                  width: 'auto',
-                  objectFit: 'contain',
-                  // Pure white on the gradient banner (crisp in light & dark themes).
-                  filter: 'brightness(0) invert(1)',
-                }}
-              />
+              <span className="rp-wordmark">RotaPay</span>
             </div>
 
             {/* Middle */}
-            <div style={{ position: 'relative', flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: '32px', padding: '40px 0' }}>
+            <div style={{ position: 'relative', flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'flex-start', gap: '32px', padding: '32px 0 40px' }}>
               <div>
                 <h2 className="rp-banner-headline">Financial precision,<br />delivered.</h2>
                 <p className="rp-banner-sub">
@@ -958,11 +962,7 @@ export default function RegisterPage() {
 
               {/* Mobile logo */}
               <div className="rp-mobile-logo">
-                <img
-                  src="/rotapay-logo.png"
-                  alt="RotaPay Icon"
-                  style={{ height: '52px', width: 'auto', objectFit: 'contain' }}
-                />
+                <span className="rp-wordmark"><span className="rp-wm-rota">Rota</span><span className="rp-wm-pay">Pay</span></span>
               </div>
 
               <h1 className="rp-heading">Create Account</h1>
