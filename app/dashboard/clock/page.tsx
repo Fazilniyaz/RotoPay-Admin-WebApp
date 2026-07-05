@@ -39,9 +39,9 @@ const initials = (name?: string | null) =>
 
 const salaryLabel = (s: Salary) => {
   const emp = s.employer?.employerName ?? 'Unknown';
-  const when = s.shift?.date ? fmtDate(s.shift.date) : 'no shift';
+  const shift = s.shift?.shiftName || s.shift?.shiftType || 'no shift';
   const rate = s.hourlyPayRate != null ? `${currencySymbol()}${s.hourlyPayRate}/h` : '—';
-  return `${emp} · ${when} · ${rate}`;
+  return `${emp} · ${shift} · ${rate}`;
 };
 
 export default function ClockPage() {
@@ -87,8 +87,11 @@ export default function ClockPage() {
   }, []);
 
   const activeSalaryIds = useMemo(() => new Set(active.map((a) => a.salaryId)), [active]);
+  // A wage is clockable if it's tied to a shift and isn't already running. The
+  // employee is optional (clock-in only needs the wage's rate), so we don't
+  // require it here — requiring it wrongly emptied the dropdown.
   const clockable = useMemo(
-    () => salaries.filter((s) => s.employer && s.shift && !activeSalaryIds.has(s.id)),
+    () => salaries.filter((s) => s.shift && !activeSalaryIds.has(s.id)),
     [salaries, activeSalaryIds]
   );
 
@@ -216,7 +219,7 @@ export default function ClockPage() {
               </div>
               {clockable.length === 0 && active.length === 0 && (
                 <p className="text-[11px] text-white/70 mt-2">
-                  Assign an employer &amp; salary to a shift first, then clock into it.
+                  Add a wage to a shift first (Shifts → Add Wages), then clock into it.
                 </p>
               )}
             </div>
@@ -286,7 +289,7 @@ export default function ClockPage() {
                                   {name}
                                 </p>
                                 <p className="text-[11px] text-[#707783] dark:text-gray-400 truncate">
-                                  {s.salary?.shift?.date ? fmtDate(s.salary.shift.date) : 'No shift'} · in{' '}
+                                  {s.salary?.shift?.shiftName || s.salary?.shift?.shiftType || 'No shift'} · in{' '}
                                   {fmtTime(s.clockInTime)}
                                 </p>
                               </div>

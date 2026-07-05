@@ -41,10 +41,22 @@ export interface Employer {
 
 // Free-form: 'day' | 'night' | 'rotational' or a user-supplied custom label.
 export type ShiftType = string;
-export type ShiftStatus = 'upcoming' | 'isActive' | 'completed';
 export type WageRateType = 'hourly' | 'weekly' | 'monthly';
 
-// A Salary/"wage" row links a Shift to an Employer and carries the pay value.
+// A preset's embedded shift shape (no date — presets are time-of-day templates).
+export interface ShiftLite {
+  id: string;
+  shiftName?: string | null;
+  startTime?: string;
+  endTime?: string;
+  totalHours?: number;
+  shiftType?: ShiftType | null;
+  color?: string | null;
+  employerId?: string | null;
+}
+
+// A Salary/"wage" row is the hourly rate for a shift preset. Its employee is
+// auto-derived from the shift's employer.
 export interface Salary {
   id: string;
   userId: string;
@@ -54,34 +66,27 @@ export interface Salary {
   rateType?: WageRateType;
   currency?: string | null;
   hourlyPayRate?: number | null;
-  shift?: {
-    id: string;
-    shiftName?: string | null;
-    date?: string | null;
-    startTime?: string;
-    endTime?: string;
-    totalHours?: number;
-    shiftType?: ShiftType | null;
-    status?: ShiftStatus | null;
-  } | null;
+  shift?: ShiftLite | null;
   employer?: { id: string; store: string; employerName: string } | null;
   createdAt: string;
   updatedAt?: string;
 }
 
+// A shift is a reusable PRESET (time-of-day window + one employee, no date).
+// It is assigned onto calendar days via CalendarEntry(type='shift').
 export interface Shift {
   id: string;
   userId: string;
   shiftName?: string | null;
-  date: string;
   startTime: string;
   endTime: string;
   totalHours: number;
   shiftType?: ShiftType | null;
-  // Label colour chosen at creation; the calendar renders shift entries in it.
+  // Label colour chosen at creation; the calendar renders shift assignments in it.
   color?: string | null;
-  status?: ShiftStatus | null;
-  isActive?: boolean | null;
+  // The single employee this preset is allocated to.
+  employerId?: string | null;
+  employer?: { id: string; store: string; employerName: string } | null;
   isManualEntry: boolean;
   notes?: string;
   salaries?: Salary[];
@@ -99,16 +104,7 @@ export interface CalendarEntry {
   shiftId?: string | null;
   employerId?: string | null;
   color?: string | null;
-  shift?: {
-    id: string;
-    shiftName?: string | null;
-    date?: string | null;
-    startTime?: string;
-    endTime?: string;
-    totalHours?: number;
-    shiftType?: ShiftType | null;
-    status?: ShiftStatus | null;
-  } | null;
+  shift?: ShiftLite | null;
   createdAt?: string;
 }
 
@@ -127,22 +123,6 @@ export interface ClockSession {
   // The linked salary carries employer + shift details + hourlyPayRate.
   salary?: Salary | null;
   createdAt?: string;
-}
-
-export interface Event {
-  id: string;
-  userId: string;
-  title: string;
-  description?: string;
-  type: string;
-  date: string;
-  endDate?: string;
-  isAllDay: boolean;
-  isRecurring: boolean;
-  recurringPattern?: string;
-  reminderEnabled: boolean;
-  reminderMinutes: number;
-  color?: string;
 }
 
 export interface Notification {
@@ -169,6 +149,4 @@ export interface UserSettings {
   dateFormat: string;
   timeFormat: string;
   notifyShiftReminder: boolean;
-  notifyEventReminder: boolean;
-  notifyBirthdayReminder: boolean;
 }

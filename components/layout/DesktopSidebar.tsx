@@ -35,13 +35,13 @@ import { getInitials } from '@/lib/utils';
 
 const navItems = [
   { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
+  { href: '/dashboard/earnings', label: 'Earnings', icon: Wallet },
   { href: '/dashboard/calendar', label: 'Calendar', icon: Calendar },
   { href: '/dashboard/shifts', label: 'Shifts', icon: CalendarClock },
   { href: '/dashboard/clock', label: 'Clock In/Out', icon: Clock },
   { href: '/dashboard/employers', label: 'Employers', icon: Building2 },
   { href: '/dashboard/reports', label: 'Reports', icon: BarChart3 },
   { href: '/dashboard/notifications', label: 'Notifications', icon: Bell },
-  { href: '/dashboard/earnings', label: 'Earnings', icon: Wallet },
   { href: '/dashboard/settings', label: 'Settings', icon: Settings },
 ];
 

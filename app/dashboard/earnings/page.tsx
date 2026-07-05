@@ -4,9 +4,10 @@ import { useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
 import { Clock, CalendarRange, Wallet, Coins, Loader2, type LucideIcon } from 'lucide-react';
-import { Shift, Salary } from '@/lib/types';
+import { Shift, Salary, CalendarEntry } from '@/lib/types';
 import { getShiftAnalytics, listShifts, ShiftAnalytics } from '@/lib/services/shifts';
 import { listSalaries } from '@/lib/services/salaries';
+import { listCalendar } from '@/lib/services/calendar';
 import { getRate } from '@/lib/services/currency';
 import { settingsStore } from '@/store/settingsStore';
 import { money, moneyIn, currencySymbol } from '@/lib/format';
@@ -68,6 +69,7 @@ function Donut({ segments }: { segments: { label: string; pct: number; color: st
 export default function EarningsPage() {
   const [analytics, setAnalytics] = useState<ShiftAnalytics | null>(null);
   const [shifts, setShifts] = useState<Shift[]>([]);
+  const [weekAssignments, setWeekAssignments] = useState<CalendarEntry[]>([]);
   const [salaries, setSalaries] = useState<Salary[]>([]);
   const [native, setNative] = useState<{ pay: number | null; code: string; rate: number | null }>({ pay: null, code: 'GBP', rate: null });
   const [loading, setLoading] = useState(true);
@@ -76,20 +78,30 @@ export default function EarningsPage() {
     let active = true;
     (async () => {
       try {
-        const [a, s, sal] = await Promise.all([getShiftAnalytics(), listShifts({ limit: 500 }), listSalaries({ limit: 500 })]);
+        // The current week's assignments drive the weekday hours chart.
+        const ws = startOfWeek(new Date());
+        const we = new Date(ws); we.setDate(we.getDate() + 7);
+        const [a, s, sal, cal] = await Promise.all([
+          getShiftAnalytics(),
+          listShifts({ limit: 500 }),
+          listSalaries({ limit: 500 }),
+          listCalendar({ from: ws.toISOString(), to: we.toISOString() }),
+        ]);
         if (!active) return;
         setAnalytics(a);
         setShifts(s.data);
         setSalaries(sal.data);
+        setWeekAssignments(cal.filter((e) => e.type === 'shift'));
 
+        // Native Pay is the conversion of "This Month Pay" (your monthly salary).
         const global = settingsStore.getState().currency;
         const nativeCode = settingsStore.getState().nativeCurrency || global;
         if (nativeCode === global) {
-          setNative({ pay: a.totalPay, code: global, rate: 1 });
+          setNative({ pay: a.thisMonthPay, code: global, rate: 1 });
         } else {
           try {
             const r = await getRate(global, nativeCode);
-            if (active) setNative({ pay: a.totalPay * r.rate, code: nativeCode, rate: r.rate });
+            if (active) setNative({ pay: a.thisMonthPay * r.rate, code: nativeCode, rate: r.rate });
           } catch {
             if (active) setNative({ pay: null, code: nativeCode, rate: null });
           }
@@ -103,18 +115,19 @@ export default function EarningsPage() {
     return () => { active = false; };
   }, []);
 
-  // Weekly hours per weekday (bar chart).
+  // Weekly hours per weekday — from the shifts ASSIGNED to each day this week.
   const weekBars = useMemo(() => {
     const ws = startOfWeek(new Date());
+    const hoursById = new Map(shifts.map((s) => [s.id, s.totalHours ?? 0]));
     return WEEKDAYS.map((day, i) => {
       const from = new Date(ws); from.setDate(from.getDate() + i);
       const to = new Date(from); to.setDate(to.getDate() + 1);
-      const hours = shifts
-        .filter((s) => { const d = new Date(s.date); return d >= from && d < to; })
-        .reduce((a, s) => a + (s.totalHours ?? 0), 0);
+      const hours = weekAssignments
+        .filter((e) => { const d = new Date(e.date); return d >= from && d < to; })
+        .reduce((a, e) => a + (e.shiftId ? hoursById.get(e.shiftId) ?? e.shift?.totalHours ?? 0 : 0), 0);
       return { day, hours: Math.round(hours * 10) / 10 };
     });
-  }, [shifts]);
+  }, [shifts, weekAssignments]);
   const maxHours = Math.max(1, ...weekBars.map((b) => b.hours));
 
   // Earnings share per employer (donut).

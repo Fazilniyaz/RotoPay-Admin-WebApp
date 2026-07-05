@@ -32,9 +32,10 @@ import {
   type LucideIcon,
 } from 'lucide-react';
 import Link from 'next/link';
-import { Shift } from '@/lib/types';
+import { Shift, CalendarEntry } from '@/lib/types';
 import { notificationsStore } from '@/store/notificationsStore';
 import { listShifts } from '@/lib/services/shifts';
+import { listCalendar } from '@/lib/services/calendar';
 import { listEmployers } from '@/lib/services/employers';
 import { timeAgo, money, fmtDateShort, fmtTime } from '@/lib/format';
 
@@ -225,6 +226,7 @@ export default function DashboardPage() {
   const activities = allActivities.slice(0, 6);
   const activitiesLoading = !activitiesLoaded;
   const [shifts, setShifts] = useState<Shift[]>([]);
+  const [assignments, setAssignments] = useState<CalendarEntry[]>([]);
   const [activeEmployers, setActiveEmployers] = useState(0);
 
   useEffect(() => {
@@ -237,14 +239,24 @@ export default function DashboardPage() {
     }
   }, [isAuthenticated, isHydrated, router]);
 
-  // Shifts (with wage rows) + employers drive every stat, chart and table below.
+  // Shift presets + calendar assignments + employers drive every stat below.
+  // Assignments (a preset put on a day) are the worked occurrences.
   useEffect(() => {
     if (!isHydrated || !isAuthenticated) return;
     let active = true;
-    Promise.all([listShifts({ limit: 500 }), listEmployers({ limit: 100 })])
-      .then(([shiftRes, empRes]) => {
+    const from = new Date();
+    from.setMonth(from.getMonth() - 2);
+    const to = new Date();
+    to.setDate(to.getDate() + 60);
+    Promise.all([
+      listShifts({ limit: 500 }),
+      listCalendar({ from: from.toISOString(), to: to.toISOString() }),
+      listEmployers({ limit: 100 }),
+    ])
+      .then(([shiftRes, calRes, empRes]) => {
         if (!active) return;
         setShifts(shiftRes.data);
+        setAssignments(calRes.filter((e) => e.type === 'shift' && e.shiftId));
         setActiveEmployers(empRes.data.filter((e) => e.isActive).length);
       })
       .catch(() => {});
@@ -253,7 +265,7 @@ export default function DashboardPage() {
     };
   }, [isHydrated, isAuthenticated]);
 
-  // ── Derive every dashboard figure from the loaded shifts ──
+  // ── Derive every dashboard figure from the assignments (occurrences) ──
   const now = new Date();
   const weekStart = startOfWeek(now);
   const lastWeekStart = new Date(weekStart);
@@ -261,17 +273,30 @@ export default function DashboardPage() {
   const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
   const lastMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
 
-  const inRange = (iso: string, from: Date, to: Date) => {
-    const d = new Date(iso);
-    return d >= from && d < to;
-  };
+  // Join each assignment to its preset for hours + wage + employer.
+  const shiftById = new Map(shifts.map((s) => [s.id, s]));
+  const occurrences = assignments.map((e) => {
+    const s = e.shiftId ? shiftById.get(e.shiftId) : undefined;
+    const earned = (s?.salaries ?? []).reduce((a, w) => a + (w.salary ?? 0), 0);
+    return {
+      date: new Date(e.date),
+      hours: s?.totalHours ?? e.shift?.totalHours ?? 0,
+      earned,
+      employer: s?.employer?.employerName || s?.shiftName || s?.shiftType || 'Shift',
+      startTime: s?.startTime,
+      endTime: s?.endTime,
+      id: e.id,
+    };
+  });
+
+  const inRange = (d: Date, from: Date, to: Date) => d >= from && d < to;
 
   // Earnings this/last month; hours this/last week.
-  const earnThisMonth = shifts.filter((s) => inRange(s.date, monthStart, now)).reduce((a, s) => a + shiftEarnings(s), 0);
-  const earnLastMonth = shifts.filter((s) => inRange(s.date, lastMonthStart, monthStart)).reduce((a, s) => a + shiftEarnings(s), 0);
-  const hoursThisWeek = shifts.filter((s) => inRange(s.date, weekStart, now)).reduce((a, s) => a + (s.totalHours ?? 0), 0);
-  const hoursLastWeek = shifts.filter((s) => inRange(s.date, lastWeekStart, weekStart)).reduce((a, s) => a + (s.totalHours ?? 0), 0);
-  const upcomingShifts = shifts.filter((s) => s.status === 'upcoming');
+  const earnThisMonth = occurrences.filter((o) => inRange(o.date, monthStart, now)).reduce((a, o) => a + o.earned, 0);
+  const earnLastMonth = occurrences.filter((o) => inRange(o.date, lastMonthStart, monthStart)).reduce((a, o) => a + o.earned, 0);
+  const hoursThisWeek = occurrences.filter((o) => inRange(o.date, weekStart, now)).reduce((a, o) => a + o.hours, 0);
+  const hoursLastWeek = occurrences.filter((o) => inRange(o.date, lastWeekStart, weekStart)).reduce((a, o) => a + o.hours, 0);
+  const upcomingOcc = occurrences.filter((o) => o.date > now);
 
   const monthTrend = trendFrom(earnThisMonth, earnLastMonth);
   const weekTrend = trendFrom(hoursThisWeek, hoursLastWeek);
@@ -279,7 +304,7 @@ export default function DashboardPage() {
   const stats: StatCardData[] = [
     { title: 'This Month Earnings', value: money(earnThisMonth), icon: Wallet, change: monthTrend.change, trend: monthTrend.trend, sub: 'vs last month' },
     { title: 'Work This Week', value: `${Math.round(hoursThisWeek * 10) / 10}h`, icon: Clock, change: weekTrend.change, trend: weekTrend.trend, sub: 'vs last week' },
-    { title: 'Upcoming Shifts', value: String(upcomingShifts.length), icon: Calendar, change: null, trend: 'neutral', sub: 'scheduled ahead' },
+    { title: 'Upcoming Shifts', value: String(upcomingOcc.length), icon: Calendar, change: null, trend: 'neutral', sub: 'scheduled ahead' },
     { title: 'Active Employers', value: String(activeEmployers), icon: Building2, change: null, trend: 'neutral', sub: 'currently active' },
   ];
 
@@ -289,12 +314,12 @@ export default function DashboardPage() {
     dayStart.setDate(dayStart.getDate() + i);
     const dayEnd = new Date(dayStart);
     dayEnd.setDate(dayEnd.getDate() + 1);
-    const amount = shifts.filter((s) => inRange(s.date, dayStart, dayEnd)).reduce((a, s) => a + shiftEarnings(s), 0);
+    const amount = occurrences.filter((o) => inRange(o.date, dayStart, dayEnd)).reduce((a, o) => a + o.earned, 0);
     return { day, amount };
   });
   const weekTotal = weekBars.reduce((a, b) => a + b.amount, 0);
 
-  // Salary overview donut — earnings share per employer (top 5 + Other).
+  // Salary overview donut — earnings share per employer across presets.
   const totalEarned = shifts.reduce((a, s) => a + shiftEarnings(s), 0);
   const byEmployer = new Map<string, number>();
   for (const s of shifts) {
@@ -312,14 +337,14 @@ export default function DashboardPage() {
   ];
 
   // Next upcoming shifts for the table (soonest first).
-  const upcomingRows = [...upcomingShifts]
-    .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
+  const upcomingRows = [...upcomingOcc]
+    .sort((a, b) => a.date.getTime() - b.date.getTime())
     .slice(0, 4)
-    .map((s) => ({
-      id: s.id,
-      employer: s.salaries?.[0]?.employer?.employerName || s.shiftName || s.shiftType || 'Shift',
-      date: fmtDateShort(s.date),
-      time: `${fmtTime(s.startTime)} – ${fmtTime(s.endTime)}`,
+    .map((o) => ({
+      id: o.id,
+      employer: o.employer,
+      date: fmtDateShort(o.date.toISOString()),
+      time: o.startTime && o.endTime ? `${fmtTime(o.startTime)} – ${fmtTime(o.endTime)}` : '—',
     }));
 
   if (!isHydrated || isLoading || !user) {

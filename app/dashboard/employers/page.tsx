@@ -16,7 +16,7 @@ import {
   ChevronRight,
   Clock,
 } from 'lucide-react';
-import { Employer, Salary, ShiftStatus } from '@/lib/types';
+import { Employer, Salary } from '@/lib/types';
 import {
   listEmployers,
   createEmployer,
@@ -36,12 +36,6 @@ const GRADIENT = 'linear-gradient(135deg, #005ea3 0%, #006d30 100%)';
 const primaryStyle = { background: GRADIENT };
 const cardCls =
   'bg-white dark:bg-[#1f2937] rounded-[10px] border border-[rgba(0,94,163,0.08)] dark:border-[rgba(160,201,255,0.08)] shadow-[0_4px_6px_rgba(0,123,210,0.06),0_2px_4px_rgba(0,123,210,0.04)] hover:shadow-[0_10px_24px_rgba(0,94,163,0.12)] hover:-translate-y-1 transition-all duration-300';
-
-const statusMeta: Record<ShiftStatus, { label: string; cls: string }> = {
-  upcoming: { label: 'Upcoming', cls: 'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300' },
-  isActive: { label: 'Active', cls: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300' },
-  completed: { label: 'Completed', cls: 'bg-gray-200 text-gray-600 dark:bg-gray-700 dark:text-gray-300' },
-};
 
 const FILTERS: Array<{ value: 'all' | 'active' | 'inactive'; label: string }> = [
   { value: 'all', label: 'All' },
@@ -63,8 +57,8 @@ const initials = (name: string) =>
     .join('')
     .toUpperCase() || '?';
 
-const shiftDateRange = (s: NonNullable<Salary['shift']>) =>
-  s.date ? fmtDate(s.date) : 'Unscheduled';
+const shiftLabel = (s: NonNullable<Salary['shift']>) =>
+  s.shiftName || s.shiftType || 'Shift';
 
 export default function EmployersPage() {
   const [employers, setEmployers] = useState<Employer[]>([]);
@@ -104,10 +98,15 @@ export default function EmployersPage() {
     load();
   }, [load]);
 
-  // Per-employer aggregates from the salary rows.
+  // A wage only counts while its shift preset still exists. Deleting a shift
+  // removes its wages, but this also guards against any orphaned rows left by
+  // deletions from before that behaviour existed.
+  const liveSalaries = useMemo(() => salaries.filter((s) => s.shiftId && s.shift), [salaries]);
+
+  // Per-employer aggregates from the (live) salary rows.
   const statsByEmployer = useMemo(() => {
     const map = new Map<string, { shiftIds: Set<string>; totalPay: number; rows: Salary[] }>();
-    for (const sal of salaries) {
+    for (const sal of liveSalaries) {
       if (!sal.employerId) continue;
       const entry = map.get(sal.employerId) ?? { shiftIds: new Set<string>(), totalPay: 0, rows: [] };
       if (sal.shiftId) entry.shiftIds.add(sal.shiftId);
@@ -116,14 +115,14 @@ export default function EmployersPage() {
       map.set(sal.employerId, entry);
     }
     return map;
-  }, [salaries]);
+  }, [liveSalaries]);
 
   const summary = useMemo(() => {
     const total = employers.length;
     const active = employers.filter((e) => e.isActive).length;
-    const totalPay = salaries.reduce((a, s) => a + (s.salary ?? 0), 0);
+    const totalPay = liveSalaries.reduce((a, s) => a + (s.salary ?? 0), 0);
     return { total, active, totalPay };
-  }, [employers, salaries]);
+  }, [employers, liveSalaries]);
 
   const filteredEmployers = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -480,15 +479,8 @@ export default function EmployersPage() {
                   <div className="min-w-0">
                     <div className="flex items-center gap-2">
                       <span className="font-semibold text-sm text-[#1b1c1c] dark:text-white truncate">
-                        {shiftDateRange(sh)}
+                        {shiftLabel(sh)}
                       </span>
-                      {sh.status && (
-                        <span
-                          className={`px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wider flex-shrink-0 ${statusMeta[sh.status].cls}`}
-                        >
-                          {statusMeta[sh.status].label}
-                        </span>
-                      )}
                     </div>
                     <div className="flex items-center gap-1.5 text-xs text-[#707783] dark:text-gray-400 font-mono mt-1">
                       <Clock className="h-3 w-3" />

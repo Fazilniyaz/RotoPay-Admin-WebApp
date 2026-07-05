@@ -15,10 +15,9 @@ import {
   Search,
   Wallet2,
   Building2,
-  ArrowRight,
-  ArrowLeft,
+  User as UserIcon,
 } from 'lucide-react';
-import { Employer, Shift, ShiftStatus, Salary } from '@/lib/types';
+import { Employer, Shift, Salary } from '@/lib/types';
 import { listEmployers } from '@/lib/services/employers';
 import {
   listShifts,
@@ -28,7 +27,7 @@ import {
 } from '@/lib/services/shifts';
 import { listSalaries, createSalary } from '@/lib/services/salaries';
 import { settingsStore } from '@/store/settingsStore';
-import { money, currencySymbol, CURRENCIES, fmtDateShort as fmtDate, fmtTime } from '@/lib/format';
+import { money, currencySymbol, CURRENCIES, fmtTime } from '@/lib/format';
 
 const labelCls = 'block text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2';
 const inputCls =
@@ -54,35 +53,18 @@ const typeBadgeCls = (t?: string | null) =>
   (t && knownBadge[t]) ||
   'bg-slate-100 text-slate-600 dark:bg-slate-700/50 dark:text-slate-300';
 
-const statusMeta: Record<ShiftStatus, { label: string; cls: string }> = {
-  upcoming: {
-    label: 'Upcoming',
-    cls: 'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300',
-  },
-  isActive: {
-    label: 'Active',
-    cls: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300',
-  },
-  completed: {
-    label: 'Completed',
-    cls: 'bg-gray-200 text-gray-600 dark:bg-gray-700 dark:text-gray-300',
-  },
-};
-
-type Filter = 'all' | ShiftStatus | 'wages';
-const STATUS_FILTERS: Array<{ value: Filter; label: string }> = [
-  { value: 'all', label: 'All' },
-  { value: 'upcoming', label: 'Upcoming' },
-  { value: 'isActive', label: 'Active' },
-  { value: 'completed', label: 'Completed' },
+type Filter = 'all' | 'wages';
+const FILTERS: Array<{ value: Filter; label: string }> = [
+  { value: 'all', label: 'Shifts' },
   { value: 'wages', label: 'Wages' },
 ];
 
-// Preset label colours for shifts (rendered on the calendar).
-const SHIFT_COLORS = ['#005ea3', '#006d30', '#b45309', '#7c3aed', '#0891b2', '#be123c'];
+// Preset label colours for shifts — a light, matte-finished set.
+const SHIFT_COLORS = ['#7FA9E0', '#6FC8A8', '#E0B36A', '#A88FD8', '#E38FA0', '#6FC0CC'];
 
 interface ShiftForm {
   shiftName: string;
+  employerId: string;
   startTime: string;
   endTime: string;
   typeChoice: string; // preset value or 'custom'
@@ -95,6 +77,7 @@ const todayInput = () => new Date().toISOString().slice(0, 10);
 
 const emptyForm = (): ShiftForm => ({
   shiftName: '',
+  employerId: '',
   startTime: '09:00',
   endTime: '17:00',
   typeChoice: 'day',
@@ -104,13 +87,15 @@ const emptyForm = (): ShiftForm => ({
 });
 
 // ── date/time helpers ──────────────────────────
-const combineISO = (date: string, time: string) => new Date(`${date}T${time}`).toISOString();
+// A preset has no date — we build the time-of-day against today so the backend
+// can derive the duration (it ignores the date part).
+const combineISO = (time: string) => new Date(`${todayInput()}T${time}`).toISOString();
 const toTimeInput = (iso: string) => {
   const d = new Date(iso);
   return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
 };
 
-// Hours between two HH:mm strings for today (overnight-aware), 2dp.
+// Hours between two HH:mm strings (overnight-aware), 2dp.
 const hoursBetween = (startTime: string, endTime: string): number => {
   const today = todayInput();
   const start = new Date(`${today}T${startTime}`).getTime();
@@ -118,21 +103,6 @@ const hoursBetween = (startTime: string, endTime: string): number => {
   if (isNaN(start) || isNaN(end)) return 0;
   if (end <= start) end += 86_400_000; // overnight
   return Math.round(((end - start) / 3_600_000) * 100) / 100;
-};
-
-// Local preview of the status the backend will derive (overnight-aware). A shift
-// is always "today".
-const previewStatus = (startTime: string, endTime: string): ShiftStatus | null => {
-  if (!startTime || !endTime) return null;
-  const today = todayInput();
-  const start = new Date(`${today}T${startTime}`);
-  let end = new Date(`${today}T${endTime}`);
-  if (isNaN(start.getTime()) || isNaN(end.getTime())) return null;
-  if (end <= start) end = new Date(end.getTime() + 86_400_000);
-  const now = new Date();
-  if (now < start) return 'upcoming';
-  if (now > end) return 'completed';
-  return 'isActive';
 };
 
 // Wages are hourly-only now — show the rate per hour.
@@ -156,11 +126,9 @@ export default function ShiftsPage() {
   const [deleteTarget, setDeleteTarget] = useState<Shift | null>(null);
   const [deleting, setDeleting] = useState(false);
 
-  // Add Wages modal (2-step)
+  // Add Wages modal — single step now (employee is inherited from the shift).
   const [wageOpen, setWageOpen] = useState(false);
-  const [wageStep, setWageStep] = useState<1 | 2>(1);
   const [wageShiftId, setWageShiftId] = useState('');
-  const [wageEmployerId, setWageEmployerId] = useState('');
   const [wageCurrency, setWageCurrency] = useState('GBP');
   const [wageValue, setWageValue] = useState('');
   const [wageSaving, setWageSaving] = useState(false);
@@ -187,9 +155,12 @@ export default function ShiftsPage() {
     load();
   }, [load]);
 
+  const employerName = (id?: string | null) =>
+    employers.find((e) => e.id === id)?.employerName ?? 'Unassigned';
+
   const openCreate = () => {
     setEditing(null);
-    setForm(emptyForm());
+    setForm({ ...emptyForm(), employerId: employers[0]?.id ?? '' });
     setModalOpen(true);
   };
 
@@ -199,6 +170,7 @@ export default function ShiftsPage() {
     const isPreset = (PRESET_TYPES as readonly string[]).includes(type);
     setForm({
       shiftName: shift.shiftName ?? '',
+      employerId: shift.employerId ?? '',
       startTime: toTimeInput(shift.startTime),
       endTime: toTimeInput(shift.endTime),
       typeChoice: isPreset ? type : 'custom',
@@ -213,7 +185,11 @@ export default function ShiftsPage() {
     form.typeChoice === 'custom' ? form.customType.trim() : form.typeChoice;
 
   const submit = async () => {
-    const { startTime, endTime } = form;
+    const { startTime, endTime, employerId } = form;
+    if (!employerId) {
+      toast.error('Select the employee for this shift');
+      return;
+    }
     if (!startTime || !endTime) {
       toast.error('Start and end time are required');
       return;
@@ -226,13 +202,11 @@ export default function ShiftsPage() {
 
     setSaving(true);
     try {
-      // A shift is always "today" — the date is set server-side; we only send the
-      // times (built against today) so the backend can derive hours + validate.
-      const today = todayInput();
       const base = {
         shiftName: form.shiftName.trim() || undefined,
-        startTime: combineISO(today, startTime),
-        endTime: combineISO(today, endTime),
+        employerId,
+        startTime: combineISO(startTime),
+        endTime: combineISO(endTime),
         shiftType: type,
         color: form.color,
         notes: form.notes.trim() || undefined,
@@ -271,15 +245,17 @@ export default function ShiftsPage() {
 
   // ── Add Wages ────────────────────────────────
   const openWages = () => {
-    setWageStep(1);
     setWageShiftId('');
-    setWageEmployerId('');
     setWageCurrency(settingsStore.getState().currency || 'GBP');
     setWageValue('');
     setWageOpen(true);
   };
 
   const submitWage = async () => {
+    if (!wageShiftId) {
+      toast.error('Select a shift');
+      return;
+    }
     const rate = Number(wageValue);
     if (!wageValue || isNaN(rate) || rate < 0) {
       toast.error('Enter a valid hourly rate');
@@ -289,7 +265,6 @@ export default function ShiftsPage() {
     try {
       await createSalary({
         shiftId: wageShiftId,
-        employerId: wageEmployerId,
         hourlyPayRate: rate,
         rateType: 'hourly',
         currency: wageCurrency,
@@ -312,21 +287,20 @@ export default function ShiftsPage() {
       : null;
 
   const shiftLabel = (s?: Shift | Salary['shift']) =>
-    s ? s.shiftName || `${s.shiftType ?? 'Shift'} · ${fmtDate(s.date)}` : 'Shift';
+    s ? s.shiftName || `${s.shiftType ?? 'Shift'}` : 'Shift';
 
-  // Client-side status filter + search over loaded shifts.
+  // Client-side search over loaded shifts.
   const filteredShifts = useMemo(() => {
     const q = search.trim().toLowerCase();
+    if (!q) return shifts;
     return shifts.filter((s) => {
-      if (filter !== 'all' && filter !== 'wages' && s.status !== filter) return false;
-      if (!q) return true;
       const inName = (s.shiftName ?? '').toLowerCase().includes(q);
       const inNotes = (s.notes ?? '').toLowerCase().includes(q);
       const inType = (s.shiftType ?? '').toLowerCase().includes(q);
-      const inDate = fmtDate(s.date).toLowerCase().includes(q);
-      return inName || inNotes || inType || inDate;
+      const inEmp = (s.employer?.employerName ?? '').toLowerCase().includes(q);
+      return inName || inNotes || inType || inEmp;
     });
-  }, [shifts, filter, search]);
+  }, [shifts, search]);
 
   const filteredWages = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -339,9 +313,7 @@ export default function ShiftsPage() {
     );
   }, [wages, search]);
 
-  const formPreview = previewStatus(form.startTime, form.endTime);
   const formHours = hoursBetween(form.startTime, form.endTime);
-  const wageStep1Valid = wageShiftId && wageEmployerId;
 
   return (
     <DashboardLayout>
@@ -351,7 +323,7 @@ export default function ShiftsPage() {
           <div>
             <h1 className="text-3xl font-extrabold text-[#005ea3]">Shifts</h1>
             <p className="text-sm text-gray-400 mt-0.5">
-              {shifts.length} shift{shifts.length === 1 ? '' : 's'} · earnings insights moved to the Earnings module
+              {shifts.length} preset{shifts.length === 1 ? '' : 's'} · assign them to days on the Calendar
             </p>
           </div>
           <div className="flex gap-2">
@@ -369,7 +341,7 @@ export default function ShiftsPage() {
         {/* Filter + search bar */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div className="flex gap-1.5 flex-wrap">
-            {STATUS_FILTERS.map((f) => (
+            {FILTERS.map((f) => (
               <button
                 key={f.value}
                 onClick={() => setFilter(f.value)}
@@ -409,7 +381,7 @@ export default function ShiftsPage() {
               </div>
               <h3 className="text-xl font-bold text-gray-800 dark:text-gray-200 mb-2">No wages yet</h3>
               <p className="text-sm text-gray-400 mb-8 max-w-xs">
-                Use “Add Wages” to assign a wage to an employee for a shift.
+                Use “Add Wages” to set the hourly rate for a shift.
               </p>
               <button onClick={openWages} className={primaryBtn} style={primaryStyle}>
                 <Wallet2 className="h-4 w-4" />
@@ -439,7 +411,7 @@ export default function ShiftsPage() {
                   </div>
                   <div className="flex items-center justify-between border-t border-[#005ea3]/[0.06] dark:border-white/5 pt-3">
                     <span className="text-[10px] font-bold uppercase tracking-wider text-[#707783] dark:text-gray-400">
-                      Today {money(w.salary)}
+                      Per day {money(w.salary)}
                     </span>
                     <span className="font-mono text-lg font-semibold text-[#005ea3] dark:text-[#a0c9ff]">
                       {wageAmount(w)}
@@ -456,7 +428,7 @@ export default function ShiftsPage() {
             </div>
             <h3 className="text-xl font-bold text-gray-800 dark:text-gray-200 mb-2">No shifts yet</h3>
             <p className="text-sm text-gray-400 mb-8 max-w-xs">
-              Add your first shift to start tracking your hours.
+              Create a shift preset, then assign it to days on the calendar.
             </p>
             <button onClick={openCreate} className={primaryBtn} style={primaryStyle}>
               <Plus className="h-4 w-4" />
@@ -465,41 +437,33 @@ export default function ShiftsPage() {
           </div>
         ) : filteredShifts.length === 0 ? (
           <div className="flex flex-col items-center justify-center min-h-[200px] text-center text-gray-400">
-            <p className="text-sm">No shifts match your filters.</p>
+            <p className="text-sm">No shifts match your search.</p>
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {filteredShifts.map((shift) => (
               <div key={shift.id} className={`${cardCls} overflow-hidden`}>
-                <div className="h-1.5 w-full" style={{ background: GRADIENT }} />
+                <div className="h-1.5 w-full" style={{ background: shift.color ?? GRADIENT }} />
                 <div className="p-5">
                   {/* header */}
                   <div className="flex items-start justify-between gap-3 mb-4">
                     <div className="flex items-center gap-3 min-w-0">
                       <div
                         className="w-11 h-11 rounded-lg flex items-center justify-center flex-shrink-0 shadow-sm"
-                        style={{ background: GRADIENT }}
+                        style={{ background: shift.color ?? GRADIENT }}
                       >
                         <CalendarRange className="h-5 w-5 text-white" strokeWidth={2} />
                       </div>
                       <div className="min-w-0">
                         <h3 className="font-bold text-[#1b1c1c] dark:text-white leading-tight truncate">
-                          {shift.shiftName || fmtDate(shift.date)}
+                          {shift.shiftName || (shift.shiftType ?? 'Shift')}
                         </h3>
                         <div className="flex items-center gap-1.5 text-[#707783] dark:text-gray-400 mt-0.5 text-xs font-mono">
                           <Clock className="h-3 w-3" />
-                          {shift.shiftName ? `${fmtDate(shift.date)} · ` : ''}
                           {fmtTime(shift.startTime)} – {fmtTime(shift.endTime)}
                         </div>
                       </div>
                     </div>
-                    {shift.status && (
-                      <span
-                        className={`px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider flex-shrink-0 ${statusMeta[shift.status].cls}`}
-                      >
-                        {statusMeta[shift.status].label}
-                      </span>
-                    )}
                   </div>
 
                   {/* stats strip */}
@@ -509,8 +473,10 @@ export default function ShiftsPage() {
                       <p className="font-mono text-base font-semibold text-[#1b1c1c] dark:text-white">{shift.totalHours}h</p>
                     </div>
                     <div className="text-center">
-                      <p className="text-[9px] font-bold uppercase tracking-[0.06em] text-[#707783] dark:text-gray-400 mb-0.5">Date</p>
-                      <p className="font-mono text-sm font-semibold text-[#1b1c1c] dark:text-white truncate px-1">{fmtDate(shift.date)}</p>
+                      <p className="text-[9px] font-bold uppercase tracking-[0.06em] text-[#707783] dark:text-gray-400 mb-0.5">Employee</p>
+                      <p className="font-mono text-sm font-semibold text-[#1b1c1c] dark:text-white truncate px-1">
+                        {shift.employer?.employerName ?? employerName(shift.employerId)}
+                      </p>
                     </div>
                   </div>
 
@@ -581,17 +547,29 @@ export default function ShiftsPage() {
             />
           </div>
 
-          <div className="flex items-center gap-2 text-xs flex-wrap">
-            <span className="text-gray-400">A shift is always for today.</span>
-            {formPreview && (
-              <>
-                <span className="text-gray-400">Status will be</span>
-                <span
-                  className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${statusMeta[formPreview].cls}`}
+          {/* Employee — the shift is allocated to this person. */}
+          <div>
+            <label className={labelCls}>Employee</label>
+            {employers.length === 0 ? (
+              <p className="text-xs text-amber-500">
+                No employees yet — add one on the Employers page first.
+              </p>
+            ) : (
+              <div className="relative">
+                <UserIcon className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 pointer-events-none" />
+                <select
+                  value={form.employerId}
+                  onChange={(e) => setForm({ ...form, employerId: e.target.value })}
+                  className={`${inputCls} pl-10`}
                 >
-                  {statusMeta[formPreview].label}
-                </span>
-              </>
+                  <option value="">Select an employee…</option>
+                  {employers.map((emp) => (
+                    <option key={emp.id} value={emp.id}>
+                      {emp.employerName} — {emp.store}
+                    </option>
+                  ))}
+                </select>
+              </div>
             )}
           </div>
 
@@ -684,154 +662,112 @@ export default function ShiftsPage() {
         </div>
       </Modal>
 
-      {/* Add Wages modal (2-step) */}
+      {/* Add Wages modal — single step (employee inherited from the shift) */}
       <Modal
         open={wageOpen}
         onClose={() => setWageOpen(false)}
         title="Add Wages"
         maxWidth="max-w-lg"
         footer={
-          wageStep === 1 ? (
-            <>
-              <button
-                onClick={() => setWageOpen(false)}
-                className="flex-1 py-3 text-[11px] font-bold uppercase tracking-widest text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors rounded-md border border-gray-200 dark:border-gray-700"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={() => setWageStep(2)}
-                disabled={!wageStep1Valid}
-                className={`flex-[2] ${primaryBtn}`}
-                style={primaryStyle}
-              >
-                Next
-                <ArrowRight className="h-4 w-4" />
-              </button>
-            </>
-          ) : (
-            <>
-              <button
-                onClick={() => setWageStep(1)}
-                className="flex-1 py-3 inline-flex items-center justify-center gap-1.5 text-[11px] font-bold uppercase tracking-widest text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors rounded-md border border-gray-200 dark:border-gray-700"
-              >
-                <ArrowLeft className="h-4 w-4" />
-                Back
-              </button>
-              <button
-                onClick={submitWage}
-                disabled={wageSaving}
-                className={`flex-[2] ${primaryBtn}`}
-                style={primaryStyle}
-              >
-                {wageSaving ? 'Saving…' : 'Create Wages'}
-              </button>
-            </>
-          )
+          <>
+            <button
+              onClick={() => setWageOpen(false)}
+              className="flex-1 py-3 text-[11px] font-bold uppercase tracking-widest text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors rounded-md border border-gray-200 dark:border-gray-700"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={submitWage}
+              disabled={wageSaving}
+              className={`flex-[2] ${primaryBtn}`}
+              style={primaryStyle}
+            >
+              {wageSaving ? 'Saving…' : 'Create Wages'}
+            </button>
+          </>
         }
       >
-        {wageStep === 1 ? (
-          <div className="space-y-5">
-            <div>
-              <label className={labelCls}>Shift</label>
-              {shifts.length === 0 ? (
-                <p className="text-xs text-amber-500">Create a shift first.</p>
-              ) : (
-                <select
-                  value={wageShiftId}
-                  onChange={(e) => setWageShiftId(e.target.value)}
-                  className={inputCls}
-                >
-                  <option value="">Select a shift…</option>
-                  {shifts.map((s) => (
-                    <option key={s.id} value={s.id}>
-                      {shiftLabel(s)} · {fmtTime(s.startTime)}–{fmtTime(s.endTime)}
-                    </option>
-                  ))}
-                </select>
-              )}
-            </div>
-            <div>
-              <label className={labelCls}>Employee</label>
-              {employers.length === 0 ? (
-                <p className="text-xs text-amber-500">
-                  No employees yet — add one on the Employers page first.
-                </p>
-              ) : (
-                <select
-                  value={wageEmployerId}
-                  onChange={(e) => setWageEmployerId(e.target.value)}
-                  className={inputCls}
-                >
-                  <option value="">Select an employee…</option>
-                  {employers.map((emp) => (
-                    <option key={emp.id} value={emp.id}>
-                      {emp.employerName} — {emp.store}
-                    </option>
-                  ))}
-                </select>
-              )}
-            </div>
-          </div>
-        ) : (
-          <div className="space-y-5">
-            <div>
-              <label className={labelCls}>Currency</label>
+        <div className="space-y-5">
+          <div>
+            <label className={labelCls}>Shift</label>
+            {shifts.length === 0 ? (
+              <p className="text-xs text-amber-500">Create a shift first.</p>
+            ) : (
               <select
-                value={wageCurrency}
-                onChange={(e) => setWageCurrency(e.target.value)}
+                value={wageShiftId}
+                onChange={(e) => setWageShiftId(e.target.value)}
                 className={inputCls}
               >
-                {CURRENCIES.map((c) => (
-                  <option key={c} value={c}>
-                    {c} ({currencySymbol(c).trim()})
+                <option value="">Select a shift…</option>
+                {shifts.map((s) => (
+                  <option key={s.id} value={s.id}>
+                    {shiftLabel(s)} · {s.employer?.employerName ?? employerName(s.employerId)} · {fmtTime(s.startTime)}–{fmtTime(s.endTime)}
                   </option>
                 ))}
               </select>
-            </div>
-            <div>
-              <label className={labelCls}>Hourly Rate</label>
-              <div className="relative">
-                <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 text-sm">
-                  {currencySymbol(wageCurrency)}
-                </span>
-                <input
-                  type="number"
-                  min={0}
-                  step="0.01"
-                  placeholder="0"
-                  value={wageValue}
-                  onChange={(e) => setWageValue(e.target.value)}
-                  className={`${inputCls} pl-9 font-mono`}
-                />
-              </div>
-              <p className="text-[11px] text-gray-400 mt-1.5">Amount paid per hour.</p>
-            </div>
-
-            {/* Live per-day pay = hourly rate × the shift's hours. */}
-            <div className="rounded-lg bg-[#005ea3]/[0.05] dark:bg-white/5 border border-[#005ea3]/[0.08] dark:border-white/10 p-4 flex items-center justify-between">
-              <div>
-                <p className="text-[10px] font-bold uppercase tracking-widest text-[#707783] dark:text-gray-400">
-                  Today&apos;s Salary
-                </p>
-                <p className="text-[11px] text-gray-400 mt-0.5">
-                  {wageShift ? `${wageShift.totalHours ?? 0}h × ${currencySymbol(wageCurrency)}${wageValue || 0}/hr` : 'Pick a shift'}
-                </p>
-              </div>
-              <span className="font-mono text-xl font-semibold text-[#005ea3] dark:text-[#a0c9ff]">
-                {wagePerDay == null
-                  ? '—'
-                  : `${currencySymbol(wageCurrency)}${(Math.round(wagePerDay * 100) / 100).toLocaleString()}`}
-              </span>
-            </div>
+            )}
+            {wageShift && (
+              <p className="text-[11px] text-gray-400 mt-1.5">
+                Wage will be assigned to {wageShift.employer?.employerName ?? employerName(wageShift.employerId)}.
+              </p>
+            )}
           </div>
-        )}
+          <div>
+            <label className={labelCls}>Currency</label>
+            <select
+              value={wageCurrency}
+              onChange={(e) => setWageCurrency(e.target.value)}
+              className={inputCls}
+            >
+              {CURRENCIES.map((c) => (
+                <option key={c} value={c}>
+                  {c} ({currencySymbol(c).trim()})
+                </option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label className={labelCls}>Hourly Rate</label>
+            <div className="relative">
+              <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 text-sm">
+                {currencySymbol(wageCurrency)}
+              </span>
+              <input
+                type="number"
+                min={0}
+                step="0.01"
+                placeholder="0"
+                value={wageValue}
+                onChange={(e) => setWageValue(e.target.value)}
+                className={`${inputCls} pl-9 font-mono`}
+              />
+            </div>
+            <p className="text-[11px] text-gray-400 mt-1.5">Amount paid per hour.</p>
+          </div>
+
+          {/* Live per-day pay = hourly rate × the shift's hours. */}
+          <div className="rounded-lg bg-[#005ea3]/[0.05] dark:bg-white/5 border border-[#005ea3]/[0.08] dark:border-white/10 p-4 flex items-center justify-between">
+            <div>
+              <p className="text-[10px] font-bold uppercase tracking-widest text-[#707783] dark:text-gray-400">
+                Per-day Salary
+              </p>
+              <p className="text-[11px] text-gray-400 mt-0.5">
+                {wageShift ? `${wageShift.totalHours ?? 0}h × ${currencySymbol(wageCurrency)}${wageValue || 0}/hr` : 'Pick a shift'}
+              </p>
+            </div>
+            <span className="font-mono text-xl font-semibold text-[#005ea3] dark:text-[#a0c9ff]">
+              {wagePerDay == null
+                ? '—'
+                : `${currencySymbol(wageCurrency)}${(Math.round(wagePerDay * 100) / 100).toLocaleString()}`}
+            </span>
+          </div>
+        </div>
       </Modal>
 
       <ConfirmDialog
         open={!!deleteTarget}
         title="Delete shift?"
-        message={`Delete the shift (${deleteTarget ? fmtDate(deleteTarget.date) : ''})? Any wages assigned to it are kept (their shift link is cleared).`}
+        message={`Delete this shift preset? Its wages and any days it was assigned to are removed too — the employee's total pay updates accordingly.`}
         loading={deleting}
         onConfirm={confirmDelete}
         onCancel={() => setDeleteTarget(null)}

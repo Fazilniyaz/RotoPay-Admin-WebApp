@@ -12,7 +12,6 @@ import {
   Clock,
   Users,
   Trash2,
-  CalendarPlus,
   Wallet2,
   Check,
   StickyNote,
@@ -20,10 +19,9 @@ import {
   User as UserIcon,
 } from 'lucide-react';
 import { Shift, CalendarEntry, CalendarEntryType, Employer } from '@/lib/types';
-import { listShifts, createShift } from '@/lib/services/shifts';
+import { listShifts } from '@/lib/services/shifts';
 import { listCalendar, createCalendarEntry, deleteCalendarEntry } from '@/lib/services/calendar';
 import { listEmployers } from '@/lib/services/employers';
-import { listSalaries } from '@/lib/services/salaries';
 import { listPaidMonths, markMonthPaid, unmarkMonthPaid, PaidMonth } from '@/lib/services/payments';
 import { fmtTime } from '@/lib/format';
 
@@ -41,13 +39,12 @@ const chipBtn =
 
 const WEEKDAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
-const PALETTE = ['#005ea3', '#006d30', '#b45309', '#7c3aed', '#dc2626', '#0891b2'];
+// Light, matte-finished label palette for events / memos.
+const PALETTE = ['#7FA9E0', '#6FC8A8', '#E0B36A', '#A88FD8', '#E38FA0', '#6FC0CC'];
 
 const startOfDay = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate());
 const isSameDay = (a: Date, b: Date) =>
   a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
-const toDateInput = (d: Date) =>
-  `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 // noon avoids any timezone day-shift when serialising a picked day.
 const dayISO = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate(), 12).toISOString();
 const tint = (hex: string) => `${hex}22`;
@@ -68,7 +65,6 @@ export default function CalendarPage() {
 
   // Employee scope (null = the user's own calendar).
   const [scopeEmployer, setScopeEmployer] = useState<Employer | null>(null);
-  const [scopeShiftIds, setScopeShiftIds] = useState<Set<string> | null>(null);
 
   // Day detail popup
   const [dayPopup, setDayPopup] = useState<Date | null>(null);
@@ -90,16 +86,6 @@ export default function CalendarPage() {
   const [payMonth, setPayMonth] = useState(() => new Date().getMonth() + 1);
   const [marking, setMarking] = useState(false);
 
-  // Add-shift modal (from the calendar)
-  const [scOpen, setScOpen] = useState(false);
-  const [scDate, setScDate] = useState(toDateInput(new Date()));
-  const [scName, setScName] = useState('');
-  const [scStart, setScStart] = useState('09:00');
-  const [scEnd, setScEnd] = useState('17:00');
-  const [scHours, setScHours] = useState('8');
-  const [scType, setScType] = useState('day');
-  const [scSaving, setScSaving] = useState(false);
-
   const cells = useMemo(() => {
     const first = new Date(viewDate.getFullYear(), viewDate.getMonth(), 1);
     const offset = (first.getDay() + 6) % 7; // days since Monday
@@ -116,7 +102,8 @@ export default function CalendarPage() {
       const to = cells[cells.length - 1];
       const employerId = scopeEmployer?.id;
       const [shiftRes, entryRes, empRes, paidRes] = await Promise.all([
-        listShifts({ limit: 100 }),
+        // Presets, optionally scoped to the viewed employee.
+        listShifts({ limit: 100, ...(employerId ? { employerId } : {}) }),
         listCalendar({
           from: from.toISOString(),
           to: new Date(to.getFullYear(), to.getMonth(), to.getDate(), 23, 59, 59).toISOString(),
@@ -129,15 +116,6 @@ export default function CalendarPage() {
       setEntries(entryRes);
       setEmployers(empRes.data);
       setPaidMonths(paidRes);
-
-      // When scoped to an employee, restrict "available shifts" to that
-      // employee's wage-linked shifts.
-      if (employerId) {
-        const wageRes = await listSalaries({ employerId, limit: 200 });
-        setScopeShiftIds(new Set(wageRes.data.map((w) => w.shiftId).filter(Boolean) as string[]));
-      } else {
-        setScopeShiftIds(null);
-      }
     } catch {
       toast.error('Failed to load calendar');
     } finally {
@@ -153,10 +131,8 @@ export default function CalendarPage() {
   const monthLabel = viewDate.toLocaleDateString('en-GB', { month: 'long', year: 'numeric' });
 
   const dayEntries = (d: Date) => entries.filter((e) => isSameDay(new Date(e.date), d));
-  const availableShifts = (d: Date) =>
-    shifts.filter(
-      (s) => isSameDay(new Date(s.date), d) && (!scopeShiftIds || scopeShiftIds.has(s.id))
-    );
+  // Presets are date-free — every preset can be assigned to any day.
+  const presetShifts = shifts;
   const isPaid = (year: number, month: number) =>
     paidMonths.some((p) => p.year === year && p.month === month);
 
@@ -200,8 +176,9 @@ export default function CalendarPage() {
     setAddTitle('');
   };
 
-  // Shifts use the colour chosen when the shift was created (Shifts module).
-  const showShiftOnCalendar = (s: Shift) => addEntry('shift', shiftLabelText(s), s.color ?? '#005ea3', s.id);
+  // Assigning a preset onto the day creates a shift-type calendar entry, drawn in
+  // the shift's own label colour.
+  const assignShift = (s: Shift) => addEntry('shift', shiftLabelText(s), s.color ?? PALETTE[0], s.id);
 
   const confirmDelete = async () => {
     if (!delTarget) return;
@@ -244,52 +221,6 @@ export default function CalendarPage() {
     }
   };
 
-  // ── Add shift from calendar ──────────────────
-  const openAddShift = (d: Date) => {
-    setScDate(toDateInput(d));
-    setScName('');
-    setScStart('09:00');
-    setScEnd('17:00');
-    setScHours('8');
-    setScType('day');
-    setScOpen(true);
-  };
-
-  // keep total hours in sync (overnight-aware)
-  useEffect(() => {
-    const start = new Date(`${scDate}T${scStart}`).getTime();
-    let end = new Date(`${scDate}T${scEnd}`).getTime();
-    if (isNaN(start) || isNaN(end)) return;
-    if (end <= start) end += 86_400_000;
-    const hours = (end - start) / 3_600_000;
-    if (hours > 0) setScHours(String(Math.round(hours * 100) / 100));
-  }, [scDate, scStart, scEnd]);
-
-  const submitAddShift = async () => {
-    if (!scType.trim()) {
-      toast.error('Shift type is required');
-      return;
-    }
-    setScSaving(true);
-    try {
-      await createShift({
-        shiftName: scName.trim() || undefined,
-        date: new Date(scDate).toISOString(),
-        startTime: new Date(`${scDate}T${scStart}`).toISOString(),
-        endTime: new Date(`${scDate}T${scEnd}`).toISOString(),
-        totalHours: Number(scHours) || 0,
-        shiftType: scType.trim(),
-      });
-      toast.success('Shift created');
-      setScOpen(false);
-      load();
-    } catch (err: any) {
-      toast.error(err?.response?.data?.message || 'Failed to create shift');
-    } finally {
-      setScSaving(false);
-    }
-  };
-
   const currentMonthPaid = isPaid(viewDate.getFullYear(), viewDate.getMonth() + 1);
 
   return (
@@ -305,7 +236,7 @@ export default function CalendarPage() {
                   <UserIcon className="h-3.5 w-3.5" /> {scopeEmployer.employerName}’s schedule
                 </span>
               ) : (
-                'Your events, memos and shift labels'
+                'Assign shifts, and add your events & memos'
               )}
             </p>
           </div>
@@ -371,51 +302,44 @@ export default function CalendarPage() {
               {cells.map((d, i) => {
                 const inMonth = d.getMonth() === viewDate.getMonth();
                 const isToday = isSameDay(d, today);
+                const isOpen = dayPopup ? isSameDay(d, dayPopup) : false;
                 const de = dayEntries(d);
-                const nShifts = availableShifts(d).length;
+                // Highlight the WHOLE cell for today / the opened day.
+                const cellState = isToday
+                  ? 'bg-[#005ea3]/[0.08] dark:bg-[#005ea3]/20 border-[#005ea3] dark:border-[#4aa3e0] ring-1 ring-inset ring-[#005ea3]/40'
+                  : isOpen
+                  ? 'bg-[#006d30]/[0.08] dark:bg-[#006d30]/20 border-[#006d30] ring-1 ring-inset ring-[#006d30]/40'
+                  : inMonth
+                  ? 'bg-white dark:bg-[#1f2937] border-[#005ea3]/[0.06] dark:border-white/5'
+                  : 'bg-gray-50/60 dark:bg-white/[0.02] border-transparent';
                 return (
                   <div
                     key={i}
                     onClick={() => setDayPopup(d)}
-                    className={`group relative min-h-[78px] sm:min-h-[108px] rounded-md border p-1 sm:p-1.5 transition-colors cursor-pointer hover:border-[#005ea3]/25 ${
-                      inMonth
-                        ? 'bg-white dark:bg-[#1f2937] border-[#005ea3]/[0.06] dark:border-white/5'
-                        : 'bg-gray-50/60 dark:bg-white/[0.02] border-transparent'
-                    }`}
+                    className={`group relative min-h-[78px] sm:min-h-[108px] rounded-md border p-1 sm:p-1.5 transition-colors cursor-pointer hover:border-[#005ea3]/25 ${cellState}`}
                   >
                     <div className="flex items-center justify-between">
                       <span
-                        className={`text-[11px] sm:text-xs font-bold w-6 h-6 flex items-center justify-center rounded-full ${
+                        className={`text-[11px] sm:text-xs font-bold w-6 h-6 flex items-center justify-center ${
                           isToday
-                            ? 'text-white'
+                            ? 'text-[#005ea3] dark:text-[#a0c9ff]'
                             : inMonth
                             ? 'text-[#1b1c1c] dark:text-gray-200'
                             : 'text-gray-300 dark:text-gray-600'
                         }`}
-                        style={isToday ? primaryStyle : undefined}
                       >
                         {d.getDate()}
                       </span>
-                      <div className="flex items-center gap-1">
-                        {nShifts > 0 && (
-                          <span
-                            className="text-[8px] font-bold text-[#005ea3] bg-[#005ea3]/[0.08] rounded px-1 py-0.5"
-                            title={`${nShifts} shift(s) available`}
-                          >
-                            {nShifts}▪
-                          </span>
-                        )}
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setDayPopup(d);
-                          }}
-                          aria-label="Open day"
-                          className="w-5 h-5 rounded-md flex items-center justify-center text-[#005ea3] bg-[#005ea3]/[0.08] hover:bg-[#005ea3]/15 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity"
-                        >
-                          <Plus className="h-3.5 w-3.5" />
-                        </button>
-                      </div>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setDayPopup(d);
+                        }}
+                        aria-label="Open day"
+                        className="w-5 h-5 rounded-md flex items-center justify-center text-[#005ea3] bg-[#005ea3]/[0.08] hover:bg-[#005ea3]/15 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity"
+                      >
+                        <Plus className="h-3.5 w-3.5" />
+                      </button>
                     </div>
 
                     <div className="mt-1 space-y-1">
@@ -423,12 +347,12 @@ export default function CalendarPage() {
                         <div
                           key={e.id}
                           className="w-full flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] sm:text-[10px] font-semibold truncate"
-                          style={{ backgroundColor: tint(e.color || '#005ea3'), color: e.color || '#005ea3' }}
+                          style={{ backgroundColor: tint(e.color || PALETTE[0]), color: e.color || PALETTE[0] }}
                           title={e.title}
                         >
                           <span
                             className="w-1.5 h-1.5 rounded-full flex-shrink-0"
-                            style={{ backgroundColor: e.color || '#005ea3' }}
+                            style={{ backgroundColor: e.color || PALETTE[0] }}
                           />
                           <span className="truncate">{e.title}</span>
                         </div>
@@ -448,7 +372,7 @@ export default function CalendarPage() {
 
         {/* Legend */}
         <div className="flex items-center gap-4 text-[10px] font-bold uppercase tracking-widest text-[#707783] dark:text-gray-400 flex-wrap">
-          <span className="flex items-center gap-1.5"><Clock className="h-3.5 w-3.5" /> Shift label</span>
+          <span className="flex items-center gap-1.5"><Clock className="h-3.5 w-3.5" /> Shift</span>
           <span className="flex items-center gap-1.5"><CalendarDays className="h-3.5 w-3.5" /> Event</span>
           <span className="flex items-center gap-1.5"><StickyNote className="h-3.5 w-3.5" /> Memo</span>
           <span className="text-gray-400 normal-case tracking-normal">Tap any day to compose it.</span>
@@ -492,9 +416,9 @@ export default function CalendarPage() {
                       <div
                         key={e.id}
                         className="flex items-center justify-between gap-2 rounded-md border p-3"
-                        style={{ borderColor: tint(e.color || '#005ea3'), backgroundColor: tint(e.color || '#005ea3') }}
+                        style={{ borderColor: tint(e.color || PALETTE[0]), backgroundColor: tint(e.color || PALETTE[0]) }}
                       >
-                        <span className="flex items-center gap-2 text-sm min-w-0" style={{ color: e.color || '#005ea3' }}>
+                        <span className="flex items-center gap-2 text-sm min-w-0" style={{ color: e.color || PALETTE[0] }}>
                           <Icon className="h-4 w-4 flex-shrink-0" />
                           <span className="truncate font-semibold">{e.title}</span>
                           <span className="text-[9px] uppercase tracking-wider opacity-70">{e.type}</span>
@@ -513,64 +437,50 @@ export default function CalendarPage() {
               )}
             </div>
 
-            {/* Available shifts on this day */}
+            {/* Shifts — all presets, each assignable onto this day */}
             <div>
-              <div className="flex items-center justify-between mb-2">
-                <p className="text-[10px] font-bold uppercase tracking-widest text-[#707783] dark:text-gray-400">
-                  Available shifts ({availableShifts(dayPopup).length})
+              <p className="text-[10px] font-bold uppercase tracking-widest text-[#707783] dark:text-gray-400 mb-2">
+                Shifts ({presetShifts.length})
+              </p>
+              {presetShifts.length === 0 ? (
+                <p className="text-xs text-gray-400">
+                  No shift presets yet — create them on the Shifts page.
                 </p>
-                <button
-                  onClick={() => {
-                    const d = dayPopup;
-                    setDayPopup(null);
-                    openAddShift(d);
-                  }}
-                  className="inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-widest text-[#005ea3] hover:underline"
-                >
-                  <CalendarPlus className="h-3.5 w-3.5" /> Add new shift
-                </button>
-              </div>
-              {availableShifts(dayPopup).length === 0 ? (
-                <p className="text-xs text-gray-400">No shifts on this day.</p>
               ) : (
-                <>
-                  <p className="text-[10px] text-gray-400 mb-2">
-                    Shifts use the colour set when you created them.
-                  </p>
-                  <div className="space-y-2">
-                    {availableShifts(dayPopup).map((s) => {
-                      const shown = dayEntries(dayPopup).some((e) => e.type === 'shift' && e.shiftId === s.id);
-                      return (
-                        <div
-                          key={s.id}
-                          className="flex items-center justify-between gap-2 rounded-md border border-[#005ea3]/[0.08] dark:border-white/10 p-3"
-                        >
-                          <div className="min-w-0 flex items-center gap-2.5">
-                            <span
-                              className="w-3 h-3 rounded-full flex-shrink-0"
-                              style={{ backgroundColor: s.color ?? '#005ea3' }}
-                            />
-                            <div className="min-w-0">
-                              <p className="font-semibold text-sm text-[#1b1c1c] dark:text-white truncate">
-                                {shiftLabelText(s)}
-                              </p>
-                              <p className="text-xs text-[#707783] dark:text-gray-400 font-mono">
-                                {fmtTime(s.startTime)} – {fmtTime(s.endTime)} · {s.totalHours}h
-                              </p>
-                            </div>
+                <div className="space-y-2">
+                  {presetShifts.map((s) => {
+                    const assigned = dayEntries(dayPopup).some((e) => e.type === 'shift' && e.shiftId === s.id);
+                    return (
+                      <div
+                        key={s.id}
+                        className="flex items-center justify-between gap-2 rounded-md border border-[#005ea3]/[0.08] dark:border-white/10 p-3"
+                      >
+                        <div className="min-w-0 flex items-center gap-2.5">
+                          <span
+                            className="w-3 h-3 rounded-full flex-shrink-0"
+                            style={{ backgroundColor: s.color ?? PALETTE[0] }}
+                          />
+                          <div className="min-w-0">
+                            <p className="font-semibold text-sm text-[#1b1c1c] dark:text-white truncate">
+                              {shiftLabelText(s)}
+                            </p>
+                            <p className="text-xs text-[#707783] dark:text-gray-400 font-mono">
+                              {fmtTime(s.startTime)} – {fmtTime(s.endTime)} · {s.totalHours}h
+                              {s.employer?.employerName ? ` · ${s.employer.employerName}` : ''}
+                            </p>
                           </div>
-                          <button
-                            disabled={shown || busy}
-                            onClick={() => showShiftOnCalendar(s)}
-                            className="text-[10px] font-bold uppercase tracking-widest text-[#005ea3] border border-[#005ea3]/20 rounded-md px-2.5 py-1.5 hover:bg-[#005ea3]/[0.06] transition-colors disabled:opacity-50 flex-shrink-0"
-                          >
-                            {shown ? 'Shown' : 'Show'}
-                          </button>
                         </div>
-                      );
-                    })}
-                  </div>
-                </>
+                        <button
+                          disabled={assigned || busy}
+                          onClick={() => assignShift(s)}
+                          className="text-[10px] font-bold uppercase tracking-widest text-[#005ea3] border border-[#005ea3]/20 rounded-md px-2.5 py-1.5 hover:bg-[#005ea3]/[0.06] transition-colors disabled:opacity-50 flex-shrink-0"
+                        >
+                          {assigned ? 'Assigned' : 'Assign shift'}
+                        </button>
+                      </div>
+                    );
+                  })}
+                </div>
               )}
             </div>
 
@@ -711,9 +621,9 @@ export default function CalendarPage() {
       >
         <div className="space-y-5">
           <p className="text-xs text-gray-400">
-            Marking a month paid records the total wages of that month’s shifts and updates the
-            <span className="font-semibold text-[#005ea3]"> This Month Pay</span> and
-            <span className="font-semibold text-[#005ea3]"> Total Pay</span> tabs on Shifts.
+            Marking a month paid records the total wages of the shifts you assigned to that month and
+            updates the <span className="font-semibold text-[#005ea3]">This Month Pay</span> and
+            <span className="font-semibold text-[#005ea3]"> Total Pay</span> figures.
           </p>
           <div className="grid grid-cols-2 gap-4">
             <div>
@@ -756,58 +666,6 @@ export default function CalendarPage() {
               </div>
             </div>
           )}
-        </div>
-      </Modal>
-
-      {/* Add shift from calendar */}
-      <Modal
-        open={scOpen}
-        onClose={() => setScOpen(false)}
-        title="Add Shift"
-        maxWidth="max-w-lg"
-        footer={
-          <>
-            <button
-              onClick={() => setScOpen(false)}
-              className="flex-1 py-3 text-[11px] font-bold uppercase tracking-widest text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors rounded-md border border-gray-200 dark:border-gray-700"
-            >
-              Cancel
-            </button>
-            <button onClick={submitAddShift} disabled={scSaving} className={`flex-[2] ${primaryBtn}`} style={primaryStyle}>
-              {scSaving ? 'Saving…' : 'Save Shift'}
-            </button>
-          </>
-        }
-      >
-        <div className="space-y-5">
-          <div>
-            <label className={labelCls}>Shift Name (optional)</label>
-            <input type="text" value={scName} onChange={(e) => setScName(e.target.value)} className={inputCls} placeholder="e.g. Morning Floor" />
-          </div>
-          <div>
-            <label className={labelCls}>Date</label>
-            <input type="date" value={scDate} onChange={(e) => setScDate(e.target.value)} className={inputCls} />
-          </div>
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className={labelCls}>Start Time</label>
-              <input type="time" value={scStart} onChange={(e) => setScStart(e.target.value)} className={inputCls} />
-            </div>
-            <div>
-              <label className={labelCls}>End Time</label>
-              <input type="time" value={scEnd} onChange={(e) => setScEnd(e.target.value)} className={inputCls} />
-            </div>
-          </div>
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className={labelCls}>Total Hours</label>
-              <input type="number" min={0} step="0.25" value={scHours} onChange={(e) => setScHours(e.target.value)} className={`${inputCls} font-mono`} />
-            </div>
-            <div>
-              <label className={labelCls}>Shift Type</label>
-              <input type="text" value={scType} onChange={(e) => setScType(e.target.value)} className={inputCls} placeholder="day / night / custom" />
-            </div>
-          </div>
         </div>
       </Modal>
 

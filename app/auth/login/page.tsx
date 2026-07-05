@@ -179,14 +179,14 @@ export default function LoginPage() {
         }
         @media (min-width: 600px) { .rp-col { padding:40px 48px; } }
 
-        .rp-form-card { width:100%; max-width:420px; animation:rpFadeIn 0.4s ease both; }
+        /* Center the whole form column's text; inputs keep their own left text. */
+        .rp-form-card { width:100%; max-width:420px; animation:rpFadeIn 0.4s ease both; text-align:center; }
 
-        .rp-mobile-logo { display:flex; flex-direction:column; align-items:center; gap:6px; margin-bottom:28px; text-align:center; }
-        .rp-mobile-logo .rp-wordmark { font-size:30px; }
-        /* Lift the brand colours on the dark form background so they don't merge. */
-        .dark .rp-mobile-logo .rp-wm-rota { color:#4aa3e0; }
-        .dark .rp-mobile-logo .rp-wm-pay  { color:#2ee0a0; }
-        @media (min-width: 960px) { .rp-mobile-logo { display:none; } }
+        /* RotaPay logo — always shown, centered at the top of the form. */
+        .rp-form-logo { display:flex; flex-direction:column; align-items:center; gap:8px; margin-bottom:24px; }
+        .rp-form-logo img { height:46px; width:auto; display:block; object-fit:contain; }
+        .dark .rp-form-logo img { filter:brightness(0) invert(1); }
+        .rp-form-logo-tag { font-size:11px; font-weight:700; letter-spacing:0.05em; text-transform:uppercase; color:var(--rp-muted); margin:0; }
 
         .rp-heading    { font-size:28px; font-weight:800; color:var(--rp-blue-mid); margin:0 0 4px; line-height:1.2; }
         .rp-subheading { font-size:14px; color:var(--rp-muted); margin:0 0 28px; font-weight:400; }
@@ -211,6 +211,7 @@ export default function LoginPage() {
           transition:border-color 0.2s, box-shadow 0.2s;
           outline:none;
           box-shadow:var(--rp-shadow);
+          text-align:left;
         }
         .rp-input.has-eye   { padding-right:38px; }
         .rp-input::placeholder { color:var(--rp-subtle); }
@@ -221,7 +222,7 @@ export default function LoginPage() {
         .rp-forgot { font-size:12px; font-weight:700; color:var(--rp-blue); text-decoration:none; }
         .rp-forgot:hover { text-decoration:underline; }
 
-        .rp-remember { display:flex; align-items:center; gap:8px; margin-bottom:20px; }
+        .rp-remember { display:flex; align-items:center; justify-content:center; gap:8px; margin-bottom:20px; }
         .rp-remember input[type="checkbox"] { width:16px; height:16px; accent-color:var(--rp-blue); cursor:pointer; flex-shrink:0; }
         .rp-remember label { font-size:13px; color:var(--rp-muted); cursor:pointer; }
 
@@ -319,12 +320,10 @@ export default function LoginPage() {
         <main className="rp-col">
           <div className="rp-form-card">
 
-            {/* Mobile logo */}
-            <div className="rp-mobile-logo">
-              <span className="rp-wordmark"><span className="rp-wm-rota">Rota</span><span className="rp-wm-pay">Pay</span></span>
-              <p style={{ fontSize: '11px', fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase', color: 'var(--rp-muted)', margin: 0 }}>
-                Precision Payroll &amp; Time Management
-              </p>
+            {/* Form logo — always shown, centered at the top of the form */}
+            <div className="rp-form-logo">
+              <img src="/rotapay-logo.png" alt="RotaPay" width={176} height={46} />
+              <p className="rp-form-logo-tag">Precision Payroll &amp; Time Management</p>
             </div>
 
             <h1 className="rp-heading">Sign In</h1>

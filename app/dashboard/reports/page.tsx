@@ -25,8 +25,12 @@ import { money } from '@/lib/format';
 import { settingsStore } from '@/store/settingsStore';
 import { generateReport } from '@/lib/services/reports';
 import { listShifts } from '@/lib/services/shifts';
-import { Shift } from '@/lib/types';
+import { listCalendar } from '@/lib/services/calendar';
+import { Shift, CalendarEntry } from '@/lib/types';
 import { exportReport, ReportFormat } from '@/lib/reportExport';
+
+// A worked occurrence = a shift preset assigned to a day (with its hours + wage).
+interface Occurrence { date: Date; hours: number; earned: number; }
 
 const GRADIENT = 'linear-gradient(135deg, #005ea3 0%, #006d30 100%)';
 const primaryStyle = { background: GRADIENT };
@@ -61,51 +65,45 @@ function pctChange(cur: number, prev: number): number {
   return Math.round(((cur - prev) / prev) * 100);
 }
 
-// ── Build the three report datasets from raw shifts ──
-function buildWeekly(shifts: Shift[], weekStart: Date): DayDatum[] {
+// ── Build the three report datasets from worked occurrences ──
+function buildWeekly(occ: Occurrence[], weekStart: Date): DayDatum[] {
   return DAY_NAMES.map((day, i) => {
     const from = new Date(weekStart);
     from.setDate(from.getDate() + i);
     const to = new Date(from);
     to.setDate(to.getDate() + 1);
-    const dayShifts = shifts.filter((s) => {
-      const d = new Date(s.date);
-      return d >= from && d < to;
-    });
+    const dayOcc = occ.filter((o) => o.date >= from && o.date < to);
     return {
       day,
       short: DAY_SHORT[i],
-      hours: Math.round(dayShifts.reduce((a, s) => a + (s.totalHours ?? 0), 0) * 10) / 10,
-      earnings: Math.round(dayShifts.reduce((a, s) => a + shiftEarnings(s), 0) * 100) / 100,
+      hours: Math.round(dayOcc.reduce((a, o) => a + o.hours, 0) * 10) / 10,
+      earnings: Math.round(dayOcc.reduce((a, o) => a + o.earned, 0) * 100) / 100,
     };
   });
 }
 
-function buildMonthly(shifts: Shift[], now: Date): MonthDatum[] {
+function buildMonthly(occ: Occurrence[], now: Date): MonthDatum[] {
   const out: MonthDatum[] = [];
   for (let i = 5; i >= 0; i--) {
     const from = new Date(now.getFullYear(), now.getMonth() - i, 1);
     const to = new Date(now.getFullYear(), now.getMonth() - i + 1, 1);
-    const monthShifts = shifts.filter((s) => {
-      const d = new Date(s.date);
-      return d >= from && d < to;
-    });
+    const monthOcc = occ.filter((o) => o.date >= from && o.date < to);
     out.push({
       month: MONTH_SHORT[from.getMonth()],
-      earnings: Math.round(monthShifts.reduce((a, s) => a + shiftEarnings(s), 0) * 100) / 100,
-      hours: Math.round(monthShifts.reduce((a, s) => a + (s.totalHours ?? 0), 0) * 10) / 10,
+      earnings: Math.round(monthOcc.reduce((a, o) => a + o.earned, 0) * 100) / 100,
+      hours: Math.round(monthOcc.reduce((a, o) => a + o.hours, 0) * 10) / 10,
     });
   }
   return out;
 }
 
-function buildYearly(shifts: Shift[]): YearDatum[] {
+function buildYearly(occ: Occurrence[]): YearDatum[] {
   const map = new Map<number, { earnings: number; hours: number }>();
-  for (const s of shifts) {
-    const y = new Date(s.date).getFullYear();
+  for (const o of occ) {
+    const y = o.date.getFullYear();
     const e = map.get(y) ?? { earnings: 0, hours: 0 };
-    e.earnings += shiftEarnings(s);
-    e.hours += s.totalHours ?? 0;
+    e.earnings += o.earned;
+    e.hours += o.hours;
     map.set(y, e);
   }
   return [...map.entries()]
@@ -352,12 +350,24 @@ export default function ReportsPage() {
   const reportMonths = settingsStore((s) => s.reportMonths);
 
   const [shifts, setShifts] = useState<Shift[]>([]);
+  const [assignments, setAssignments] = useState<CalendarEntry[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     let active = true;
-    listShifts({ limit: 1000 })
-      .then((r) => active && setShifts(r.data))
+    // Charts cover a couple of years of assignments (worked occurrences).
+    const from = new Date();
+    from.setFullYear(from.getFullYear() - 2);
+    const to = new Date();
+    Promise.all([
+      listShifts({ limit: 1000 }),
+      listCalendar({ from: from.toISOString(), to: to.toISOString() }),
+    ])
+      .then(([sh, cal]) => {
+        if (!active) return;
+        setShifts(sh.data);
+        setAssignments(cal.filter((e) => e.type === 'shift' && e.shiftId));
+      })
       .catch(() => active && toast.error('Failed to load report data'))
       .finally(() => active && setLoading(false));
     return () => {
@@ -365,19 +375,28 @@ export default function ReportsPage() {
     };
   }, []);
 
-  // Derive the three datasets from the loaded shifts (recomputed on data change).
+  // Derive the three datasets from worked occurrences (recomputed on data change).
   const { weekly, prevWeek, monthly, yearly } = useMemo(() => {
     const now = new Date();
     const weekStart = startOfWeek(now);
     const lastWeekStart = new Date(weekStart);
     lastWeekStart.setDate(lastWeekStart.getDate() - 7);
+    const shiftById = new Map(shifts.map((s) => [s.id, s]));
+    const occ: Occurrence[] = assignments.map((e) => {
+      const s = e.shiftId ? shiftById.get(e.shiftId) : undefined;
+      return {
+        date: new Date(e.date),
+        hours: s?.totalHours ?? e.shift?.totalHours ?? 0,
+        earned: (s?.salaries ?? []).reduce((a, w) => a + (w.salary ?? 0), 0),
+      };
+    });
     return {
-      weekly: buildWeekly(shifts, weekStart),
-      prevWeek: buildWeekly(shifts, lastWeekStart),
-      monthly: buildMonthly(shifts, now),
-      yearly: buildYearly(shifts),
+      weekly: buildWeekly(occ, weekStart),
+      prevWeek: buildWeekly(occ, lastWeekStart),
+      monthly: buildMonthly(occ, now),
+      yearly: buildYearly(occ),
     };
-  }, [shifts]);
+  }, [shifts, assignments]);
 
   const handleExport = async (format: ReportFormat) => {
     setExporting(format);

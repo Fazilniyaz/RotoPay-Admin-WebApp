@@ -1,29 +1,27 @@
 // lib/services/shifts.ts
 // CRUD calls for the Shift resource.
 import api from '@/lib/axios';
-import { ApiResponse, Shift, ShiftType, ShiftStatus, PaginationMeta } from '@/lib/types';
+import { ApiResponse, Shift, ShiftType, PaginationMeta } from '@/lib/types';
 
 export interface CreateShiftInput {
   shiftName?: string;
-  // Optional — the backend defaults to today (a shift is always "today").
-  date?: string; // ISO
+  // Time-of-day only (built against an arbitrary day — a preset has no date).
   startTime: string; // ISO
   endTime: string; // ISO
   totalHours?: number; // derived server-side; optional
   shiftType: ShiftType;
   color?: string; // hex label colour
+  // The employee this preset is allocated to (required).
+  employerId: string;
   notes?: string;
 }
 
 export type UpdateShiftInput = Partial<CreateShiftInput>;
 
 export interface ListShiftsParams {
-  status?: ShiftStatus;
   search?: string;
   employerId?: string;
   shiftType?: ShiftType;
-  from?: string;
-  to?: string;
   page?: number;
   limit?: number;
 }

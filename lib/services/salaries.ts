@@ -5,7 +5,7 @@ import { ApiResponse, Salary, PaginationMeta } from '@/lib/types';
 
 export interface CreateSalaryInput {
   shiftId?: string | null;
-  employerId?: string | null;
+  // Employee is auto-derived from the shift's employer — not sent here.
   // The hourly rate. Per-day/total pay is derived server-side as
   // hourlyPayRate × the linked shift's totalHours.
   hourlyPayRate: number;
@@ -15,7 +15,6 @@ export interface CreateSalaryInput {
 
 export interface UpdateSalaryInput {
   shiftId?: string | null;
-  employerId?: string | null;
   hourlyPayRate?: number;
   rateType?: 'hourly';
   currency?: string | null;

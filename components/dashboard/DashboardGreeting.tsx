@@ -1,6 +1,6 @@
 'use client';
 
-import { User } from '@/lib/types';
+import { User } from '@/store/authStore';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { getGreeting } from '@/lib/utils';
 
@@ -12,7 +12,7 @@ export function DashboardGreeting({ user }: DashboardGreetingProps) {
   const greeting = getGreeting();
   const initials = user?.displayName
     ?.split(' ')
-    .map((n) => n[0])
+    .map((n: string) => n[0])
     .join('')
     .toUpperCase() || 'U';
 

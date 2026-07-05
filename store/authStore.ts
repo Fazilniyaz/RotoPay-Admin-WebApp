@@ -25,6 +25,7 @@ export interface AuthState {
   setTokens: (accessToken: string, refreshToken: string) => void;
   setTheme: (theme: 'light' | 'dark' | 'system') => void;
   setLoading: (isLoading: boolean) => void;
+  setHydrated: (state: boolean) => void;
   clearAuth: () => void;
   logout: () => void;
 }
