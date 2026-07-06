@@ -32,6 +32,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { useAuth } from '@/hooks/useAuth';
 import { getInitials } from '@/lib/utils';
+import { DefaultEmployeeSwitcher } from '@/components/layout/DefaultEmployeeSwitcher';
 
 const navItems = [
   { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
@@ -436,6 +437,9 @@ export function DesktopSidebar() {
 
         {/* Footer */}
         <div className="rp-sidebar-footer">
+          {/* Default-employee switcher — re-scopes calendar/earnings/reports from any page */}
+          <DefaultEmployeeSwitcher collapsed={isCollapsed} />
+
           {!isCollapsed && (
             <div className="rp-theme-row">
               <ThemeToggle />
