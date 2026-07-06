@@ -4,13 +4,14 @@
 
 `middleware.ts` sets, on every page response:
 
-- **Content-Security-Policy** — strict, per-request **nonce** + `strict-dynamic` for scripts (Next
-  auto-stamps its inline scripts; only nonce-trusted scripts and what they load run). `style-src`
-  keeps `'unsafe-inline'` because the UI uses inline styles/`<style>` blocks. `object-src 'none'`,
-  `base-uri 'self'`, `form-action 'self'`, `frame-ancestors 'none'`, `upgrade-insecure-requests`.
-  Google (OAuth + reCAPTCHA) and the API origin are allow-listed for `connect-src`/`frame-src`, and
-  Google Fonts (`fonts.googleapis.com` / `fonts.gstatic.com`) for `style-src`/`font-src` (Montserrat +
-  JetBrains Mono are `@import`ed in `globals.css`).
+- **Content-Security-Policy** — a **Next-static-compatible** policy. Scripts/styles allow
+  `'unsafe-inline'` (Next ships inline bootstrap scripts that only get a nonce on *dynamically*
+  rendered pages — a nonce+`strict-dynamic` CSP works in `next dev` but blocks the whole app on
+  Vercel's statically-optimized pages, so it's intentionally avoided). Everything else is locked down:
+  `object-src 'none'`, `base-uri 'self'`, `form-action 'self'`, `frame-ancestors 'none'`,
+  `upgrade-insecure-requests`, restricted `img-src`/`font-src`/`frame-src`, Google Fonts allow-listed,
+  and `connect-src 'self' https: wss:` (the API origin varies per environment). Tightening scripts to a
+  nonce later requires forcing dynamic rendering + a dedicated preview test.
 - **Strict-Transport-Security** (HSTS, 2y, preload), **X-Content-Type-Options: nosniff**,
   **X-Frame-Options: DENY**, **Referrer-Policy: strict-origin-when-cross-origin**,
   **Permissions-Policy** (camera/mic/geo/topics denied).
