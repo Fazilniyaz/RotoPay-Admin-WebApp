@@ -16,6 +16,13 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 
+// `next dev` runs with NODE_ENV=development; the Vercel build runs as production.
+// In local dev the backend + HMR are plain HTTP/WS on localhost, so an
+// HTTPS-only connect-src (+ upgrade-insecure-requests) would block every API call
+// (blocked:csp). We relax ONLY connect-src (+ drop the HTTPS upgrade) in dev;
+// production is left exactly as it was (which is verified working live).
+const isDev = process.env.NODE_ENV !== 'production';
+
 export function middleware(_request: NextRequest) {
   const csp = [
     `default-src 'self'`,
@@ -30,8 +37,11 @@ export function middleware(_request: NextRequest) {
     `img-src 'self' data: blob: https:`,
     // Google Fonts font files.
     `font-src 'self' data: https://fonts.gstatic.com`,
-    // XHR/fetch to the API (any HTTPS host — the API origin varies per env) + WS.
-    `connect-src 'self' https: wss:`,
+    // XHR/fetch + WebSockets. Prod = HTTPS only; dev also allows http/ws for the
+    // local backend (http://localhost:5000) and Next's HMR socket.
+    isDev
+      ? `connect-src 'self' http: https: ws: wss:`
+      : `connect-src 'self' https: wss:`,
     // reCAPTCHA + Google sign-in iframes.
     `frame-src 'self' https://www.google.com https://accounts.google.com`,
     // High-impact lockdowns (safe — don't affect app functionality):
@@ -39,7 +49,8 @@ export function middleware(_request: NextRequest) {
     `base-uri 'self'`,
     `form-action 'self'`,
     `frame-ancestors 'none'`,
-    `upgrade-insecure-requests`,
+    // Force HTTPS in production only — in dev it would break the http localhost API.
+    ...(isDev ? [] : [`upgrade-insecure-requests`]),
   ].join('; ');
 
   const response = NextResponse.next();
