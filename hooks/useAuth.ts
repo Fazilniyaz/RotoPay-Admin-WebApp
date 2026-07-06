@@ -3,6 +3,9 @@
 import { useCallback } from 'react';
 import api from '@/lib/axios';
 import { authStore, User } from '@/store/authStore';
+import { dataStore } from '@/store/dataStore';
+import { notificationsStore } from '@/store/notificationsStore';
+import { settingsStore } from '@/store/settingsStore';
 import { toast } from 'sonner';
 
 export const useAuth = () => {
@@ -194,6 +197,10 @@ export const useAuth = () => {
     } finally {
       logout();
       clearAuth();
+      // Wipe every cached module so the next user starts from a clean slate.
+      dataStore.getState().clear();
+      notificationsStore.getState().reset();
+      settingsStore.getState().reset();
     }
   }, [logout, clearAuth]);
 

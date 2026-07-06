@@ -10,6 +10,7 @@ import { listSalaries } from '@/lib/services/salaries';
 import { listCalendar } from '@/lib/services/calendar';
 import { getRate } from '@/lib/services/currency';
 import { settingsStore } from '@/store/settingsStore';
+import { dataStore } from '@/store/dataStore';
 import { money, moneyIn, currencySymbol } from '@/lib/format';
 
 const GRADIENT = 'linear-gradient(135deg, #005ea3 0%, #006d30 100%)';
@@ -74,18 +75,29 @@ export default function EarningsPage() {
   const [native, setNative] = useState<{ pay: number | null; code: string; rate: number | null }>({ pay: null, code: 'GBP', rate: null });
   const [loading, setLoading] = useState(true);
 
+  // Earnings follow the default employee (set in the Employees module).
+  const employers = dataStore((s) => s.employers);
+  const defaultEmployerId = dataStore((s) => s.defaultEmployerId);
+  const defaultEmployer = employers.find((e) => e.id === defaultEmployerId) ?? null;
+
+  useEffect(() => {
+    dataStore.getState().loadAll();
+  }, []);
+
   useEffect(() => {
     let active = true;
     (async () => {
       try {
+        setLoading(true);
         // The current week's assignments drive the weekday hours chart.
         const ws = startOfWeek(new Date());
         const we = new Date(ws); we.setDate(we.getDate() + 7);
         const [a, s, sal, cal] = await Promise.all([
-          getShiftAnalytics(),
+          // Analytics + this employee's assignments are scoped to the default employee.
+          getShiftAnalytics(defaultEmployerId ?? undefined),
           listShifts({ limit: 500 }),
           listSalaries({ limit: 500 }),
-          listCalendar({ from: ws.toISOString(), to: we.toISOString() }),
+          listCalendar({ from: ws.toISOString(), to: we.toISOString(), employerId: defaultEmployerId ?? undefined }),
         ]);
         if (!active) return;
         setAnalytics(a);
@@ -113,7 +125,7 @@ export default function EarningsPage() {
       }
     })();
     return () => { active = false; };
-  }, []);
+  }, [defaultEmployerId]);
 
   // Weekly hours per weekday — from the shifts ASSIGNED to each day this week.
   const weekBars = useMemo(() => {
@@ -149,7 +161,11 @@ export default function EarningsPage() {
       <div className="space-y-6">
         <div>
           <h1 className="text-3xl font-extrabold text-[#005ea3]">Earnings</h1>
-          <p className="text-sm text-gray-400 mt-0.5">Your hours and pay at a glance</p>
+          <p className="text-sm text-gray-400 mt-0.5">
+            {defaultEmployer
+              ? `${defaultEmployer.employerName}’s hours and pay · switch the default in Employees`
+              : 'Your hours and pay at a glance'}
+          </p>
         </div>
 
         {loading ? (

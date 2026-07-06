@@ -45,8 +45,11 @@ export interface ShiftAnalytics {
   thisMonthPay: number;
 }
 
-export async function getShiftAnalytics(): Promise<ShiftAnalytics> {
-  const res = await api.get<ApiResponse<ShiftAnalytics>>('/shifts/analytics');
+// Analytics are per-employee. Omit employerId to use the default employee.
+export async function getShiftAnalytics(employerId?: string): Promise<ShiftAnalytics> {
+  const res = await api.get<ApiResponse<ShiftAnalytics>>('/shifts/analytics', {
+    params: employerId ? { employerId } : undefined,
+  });
   return res.data.data as ShiftAnalytics;
 }
 

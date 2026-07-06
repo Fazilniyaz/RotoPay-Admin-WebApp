@@ -14,25 +14,36 @@ export interface SettingsState {
   timeFormat: TimeFormat;
   reportMonths: number; // report export window (1–3)
   clockInType: ClockInType; // automatic (default) | manual
+  // The default employee id (scopes calendar/earnings/reports). Null → the user
+  // has no employees yet and must complete onboarding.
+  defaultEmployerId: string | null;
   loaded: boolean;
   setSettings: (s: Partial<SettingsState>) => void;
+  /** Reset to defaults on logout so no profile data leaks into the next session. */
+  reset: () => void;
 }
+
+const DEFAULTS = {
+  displayName: '',
+  email: '',
+  currency: 'GBP',
+  nativeCurrency: 'GBP',
+  dateFormat: 'DD/MM/YYYY' as DateFormat,
+  timeFormat: '12h' as TimeFormat,
+  reportMonths: 1,
+  clockInType: 'automatic' as ClockInType,
+  defaultEmployerId: null as string | null,
+  loaded: false,
+};
 
 // Persisted so global formatters have the user's preferences instantly on load,
 // before the /api/settings fetch resolves.
 export const settingsStore = create<SettingsState>()(
   persist(
     (set) => ({
-      displayName: '',
-      email: '',
-      currency: 'GBP',
-      nativeCurrency: 'GBP',
-      dateFormat: 'DD/MM/YYYY',
-      timeFormat: '12h',
-      reportMonths: 1,
-      clockInType: 'automatic',
-      loaded: false,
+      ...DEFAULTS,
       setSettings: (s) => set(s),
+      reset: () => set(DEFAULTS),
     }),
     { name: 'rotapay-settings' }
   )

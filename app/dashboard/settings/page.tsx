@@ -4,14 +4,16 @@ import { useEffect, useState, useCallback, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
+import { ConfirmDialog } from '@/components/ui/modal';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { useAuth } from '@/hooks/useAuth';
-import { User, Globe, Loader2, LogOut, Mail, Check, Camera, Trash2, Timer, ArrowRight } from 'lucide-react';
+import { User, Globe, Loader2, LogOut, Mail, Check, Camera, Trash2, Timer, ArrowRight, AlertTriangle } from 'lucide-react';
 import {
   getSettings,
   updateSettings,
   updateProfilePicture,
   removeProfilePicture,
+  deleteAccount,
 } from '@/lib/services/settings';
 import { getRate } from '@/lib/services/currency';
 import { authStore } from '@/store/authStore';
@@ -50,6 +52,11 @@ export default function SettingsPage() {
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+
+  // Delete-account flow — a click opens a confirm dialog; only the confirm
+  // actually deletes. Two-step by design (destructive + irreversible).
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [deletingAccount, setDeletingAccount] = useState(false);
   const [email, setEmail] = useState('');
   const [displayName, setDisplayName] = useState('');
   const [currency, setCurrency] = useState('GBP');
@@ -230,6 +237,23 @@ export default function SettingsPage() {
   const handleLogout = async () => {
     await logout();
     router.push('/auth/login');
+  };
+
+  // Runs only after the user confirms in the dialog. Deletes the account, then
+  // tears down local session state (which also clears every cached store) and
+  // sends the user to login.
+  const handleDeleteAccount = async () => {
+    setDeletingAccount(true);
+    try {
+      await deleteAccount();
+      setDeleteOpen(false);
+      toast.success('Your account has been deleted');
+      await logout();
+      router.replace('/auth/login');
+    } catch (err: any) {
+      toast.error(err?.response?.data?.message || 'Could not delete account');
+      setDeletingAccount(false);
+    }
   };
 
   // Live preview from the current (unsaved) selections.
@@ -518,9 +542,40 @@ export default function SettingsPage() {
                 {saving ? 'Saving…' : 'Save Changes'}
               </button>
             </div>
+
+            {/* Danger Zone — permanent account deletion (two-step: confirm first) */}
+            <div className="rounded-[10px] border border-red-200 dark:border-red-900/50 bg-red-50/60 dark:bg-red-900/10 p-5 sm:p-6">
+              <div className="flex items-center gap-2 mb-2">
+                <div className="w-9 h-9 rounded-lg flex items-center justify-center bg-red-500">
+                  <AlertTriangle className="h-4 w-4 text-white" />
+                </div>
+                <h2 className="font-bold text-red-600 dark:text-red-400">Danger Zone</h2>
+              </div>
+              <p className="text-sm text-gray-500 dark:text-gray-400 mb-4 max-w-xl">
+                Deleting your account permanently removes your profile, shifts, wages,
+                employees, calendar, clock history and reports. This action cannot be undone.
+              </p>
+              <button
+                onClick={() => setDeleteOpen(true)}
+                className="inline-flex items-center justify-center gap-2 px-5 py-3 rounded-lg text-[11px] font-bold uppercase tracking-widest text-white bg-red-600 hover:bg-red-700 transition-colors"
+              >
+                <Trash2 className="h-4 w-4" />
+                Delete Account
+              </button>
+            </div>
           </>
         )}
       </div>
+
+      <ConfirmDialog
+        open={deleteOpen}
+        title="Delete your account?"
+        message="This permanently deletes your account and ALL of your data — shifts, wages, employees, calendar, clock history and reports. This cannot be undone."
+        confirmLabel="Delete Account"
+        loading={deletingAccount}
+        onConfirm={handleDeleteAccount}
+        onCancel={() => setDeleteOpen(false)}
+      />
     </DashboardLayout>
   );
 }

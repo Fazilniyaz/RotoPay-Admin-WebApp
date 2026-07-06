@@ -18,11 +18,11 @@ import {
   CalendarDays,
   User as UserIcon,
 } from 'lucide-react';
-import { Shift, CalendarEntry, CalendarEntryType, Employer } from '@/lib/types';
+import { Shift, CalendarEntry, CalendarEntryType } from '@/lib/types';
 import { listShifts } from '@/lib/services/shifts';
 import { listCalendar, createCalendarEntry, deleteCalendarEntry } from '@/lib/services/calendar';
-import { listEmployers } from '@/lib/services/employers';
 import { listPaidMonths, markMonthPaid, unmarkMonthPaid, PaidMonth } from '@/lib/services/payments';
+import { dataStore } from '@/store/dataStore';
 import { fmtTime } from '@/lib/format';
 
 const GRADIENT = 'linear-gradient(135deg, #005ea3 0%, #006d30 100%)';
@@ -59,12 +59,18 @@ export default function CalendarPage() {
   const [viewDate, setViewDate] = useState(() => new Date());
   const [shifts, setShifts] = useState<Shift[]>([]);
   const [entries, setEntries] = useState<CalendarEntry[]>([]);
-  const [employers, setEmployers] = useState<Employer[]>([]);
   const [paidMonths, setPaidMonths] = useState<PaidMonth[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // Employee scope (null = the user's own calendar).
-  const [scopeEmployer, setScopeEmployer] = useState<Employer | null>(null);
+  // Employees come from the shared cache; the default one seeds the view.
+  const employers = dataStore((s) => s.employers);
+  const defaultEmployerId = dataStore((s) => s.defaultEmployerId);
+
+  // Which employee's calendar is being viewed. Null → fall back to the default
+  // employee. Every calendar is now employee-scoped (no "own"/null calendar).
+  const [scopeChoice, setScopeChoice] = useState<string | null>(null);
+  const scopeId = scopeChoice ?? defaultEmployerId;
+  const scopeEmployer = employers.find((e) => e.id === scopeId) ?? null;
 
   // Day detail popup
   const [dayPopup, setDayPopup] = useState<Date | null>(null);
@@ -100,30 +106,30 @@ export default function CalendarPage() {
     try {
       const from = cells[0];
       const to = cells[cells.length - 1];
-      const employerId = scopeEmployer?.id;
-      const [shiftRes, entryRes, empRes, paidRes] = await Promise.all([
-        // Presets, optionally scoped to the viewed employee.
-        listShifts({ limit: 100, ...(employerId ? { employerId } : {}) }),
+      const employerId = scopeId ?? undefined;
+      const [shiftRes, entryRes, paidRes] = await Promise.all([
+        // Shifts are GLOBAL presets — any shift can be assigned to any employee's
+        // calendar, so we never filter them by the viewed employee.
+        listShifts({ limit: 200 }),
         listCalendar({
           from: from.toISOString(),
           to: new Date(to.getFullYear(), to.getMonth(), to.getDate(), 23, 59, 59).toISOString(),
           employerId,
         }),
-        listEmployers({ limit: 100 }),
-        listPaidMonths(),
+        listPaidMonths(employerId),
       ]);
       setShifts(shiftRes.data);
       setEntries(entryRes);
-      setEmployers(empRes.data);
       setPaidMonths(paidRes);
     } catch {
       toast.error('Failed to load calendar');
     } finally {
       setLoading(false);
     }
-  }, [cells, scopeEmployer]);
+  }, [cells, scopeId]);
 
   useEffect(() => {
+    dataStore.getState().loadAll();
     load();
   }, [load]);
 
@@ -149,7 +155,7 @@ export default function CalendarPage() {
         title,
         color,
         shiftId,
-        employerId: scopeEmployer?.id,
+        employerId: scopeId ?? undefined,
       });
       toast.success('Added to calendar');
       await load();
@@ -199,11 +205,14 @@ export default function CalendarPage() {
   const submitMark = async () => {
     setMarking(true);
     try {
-      await markMonthPaid(payYear, payMonth);
+      await markMonthPaid(payYear, payMonth, scopeId ?? undefined);
       toast.success(`${MONTHS[payMonth - 1]} ${payYear} marked as paid`);
       setMarkOpen(false);
-      const paid = await listPaidMonths();
+      const paid = await listPaidMonths(scopeId ?? undefined);
       setPaidMonths(paid);
+      // Total/This-Month pay for this employee changed → refresh cached analytics.
+      dataStore.getState().refreshAnalytics();
+      dataStore.getState().refreshPaidMonths();
     } catch (err: any) {
       toast.error(err?.response?.data?.message || 'Failed to mark paid');
     } finally {
@@ -213,9 +222,11 @@ export default function CalendarPage() {
 
   const toggleUnmark = async (p: PaidMonth) => {
     try {
-      await unmarkMonthPaid(p.year, p.month);
+      await unmarkMonthPaid(p.year, p.month, scopeId ?? undefined);
       setPaidMonths((prev) => prev.filter((x) => x.id !== p.id));
       toast.success('Unmarked');
+      dataStore.getState().refreshAnalytics();
+      dataStore.getState().refreshPaidMonths();
     } catch {
       toast.error('Failed to unmark');
     }
@@ -559,20 +570,6 @@ export default function CalendarPage() {
       {/* Employee picker */}
       <Modal open={empOpen} onClose={() => setEmpOpen(false)} title="Show calendar for" maxWidth="max-w-sm">
         <div className="space-y-2">
-          <button
-            onClick={() => {
-              setScopeEmployer(null);
-              setEmpOpen(false);
-            }}
-            className={`w-full flex items-center gap-3 rounded-md border p-3 text-left transition-colors ${
-              !scopeEmployer ? 'border-[#005ea3] bg-[#005ea3]/[0.04]' : 'border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800'
-            }`}
-          >
-            <div className="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0" style={primaryStyle}>
-              <CalendarDays className="h-4 w-4 text-white" />
-            </div>
-            <span className="font-semibold text-sm text-[#1b1c1c] dark:text-white">My calendar</span>
-          </button>
           {employers.length === 0 && (
             <p className="text-xs text-gray-400 py-2">No employees yet — add them on the Employers page.</p>
           )}
@@ -580,18 +577,25 @@ export default function CalendarPage() {
             <button
               key={emp.id}
               onClick={() => {
-                setScopeEmployer(emp);
+                setScopeChoice(emp.id);
                 setEmpOpen(false);
               }}
               className={`w-full flex items-center gap-3 rounded-md border p-3 text-left transition-colors ${
-                scopeEmployer?.id === emp.id ? 'border-[#005ea3] bg-[#005ea3]/[0.04]' : 'border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800'
+                scopeId === emp.id ? 'border-[#005ea3] bg-[#005ea3]/[0.04]' : 'border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800'
               }`}
             >
               <div className="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0 bg-[#005ea3]/10 text-[#005ea3] font-bold text-sm">
                 {emp.employerName.slice(0, 1).toUpperCase()}
               </div>
-              <div className="min-w-0">
-                <p className="font-semibold text-sm text-[#1b1c1c] dark:text-white truncate">{emp.employerName}</p>
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center gap-1.5">
+                  <p className="font-semibold text-sm text-[#1b1c1c] dark:text-white truncate">{emp.employerName}</p>
+                  {emp.id === defaultEmployerId && (
+                    <span className="text-[8px] font-bold uppercase tracking-widest text-[#006d30] bg-[#006d30]/10 rounded-full px-1.5 py-0.5 flex-shrink-0">
+                      Default
+                    </span>
+                  )}
+                </div>
                 <p className="text-xs text-gray-400 truncate">{emp.store}</p>
               </div>
             </button>

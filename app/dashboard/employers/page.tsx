@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useCallback, useMemo } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { toast } from 'sonner';
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
 import { Modal, ConfirmDialog } from '@/components/ui/modal';
@@ -15,17 +15,17 @@ import {
   Calendar,
   ChevronRight,
   Clock,
+  Star,
 } from 'lucide-react';
 import { Employer, Salary } from '@/lib/types';
 import {
-  listEmployers,
   createEmployer,
   updateEmployer,
   deleteEmployer,
   EmployerInput,
 } from '@/lib/services/employers';
-import { listSalaries } from '@/lib/services/salaries';
-import { money, currencySymbol, fmtDateShort as fmtDate, fmtTime } from '@/lib/format';
+import { dataStore } from '@/store/dataStore';
+import { money, currencySymbol, fmtTime } from '@/lib/format';
 
 const labelCls = 'block text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2';
 const inputCls =
@@ -61,9 +61,13 @@ const shiftLabel = (s: NonNullable<Salary['shift']>) =>
   s.shiftName || s.shiftType || 'Shift';
 
 export default function EmployersPage() {
-  const [employers, setEmployers] = useState<Employer[]>([]);
-  const [salaries, setSalaries] = useState<Salary[]>([]);
-  const [loading, setLoading] = useState(true);
+  // Read from the shared cache — instant, and switching the default employee
+  // here re-scopes calendar/earnings/reports app-wide.
+  const employers = dataStore((s) => s.employers);
+  const salaries = dataStore((s) => s.wages);
+  const defaultEmployerId = dataStore((s) => s.defaultEmployerId);
+  const loaded = dataStore((s) => s.loaded);
+  const loading = !loaded;
 
   const [search, setSearch] = useState('');
   const [filter, setFilter] = useState<'all' | 'active' | 'inactive'>('all');
@@ -77,26 +81,26 @@ export default function EmployersPage() {
   const [deleting, setDeleting] = useState(false);
 
   const [shiftsTarget, setShiftsTarget] = useState<Employer | null>(null);
-
-  const load = useCallback(async () => {
-    setLoading(true);
-    try {
-      const [empRes, salRes] = await Promise.all([
-        listEmployers({ limit: 100 }),
-        listSalaries({ limit: 100 }),
-      ]);
-      setEmployers(empRes.data);
-      setSalaries(salRes.data);
-    } catch {
-      toast.error('Failed to load employers');
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+  // Which employee's "set as default" request is in flight.
+  const [settingDefault, setSettingDefault] = useState<string | null>(null);
 
   useEffect(() => {
-    load();
-  }, [load]);
+    dataStore.getState().loadAll();
+  }, []);
+
+  // Make an employee the default (re-scopes calendar/earnings/reports).
+  const makeDefault = async (emp: Employer) => {
+    if (emp.id === defaultEmployerId || settingDefault) return;
+    setSettingDefault(emp.id);
+    try {
+      await dataStore.getState().setDefaultEmployer(emp.id);
+      toast.success(`${emp.employerName} is now your default employee`);
+    } catch (err: any) {
+      toast.error(err?.response?.data?.message || 'Could not set default');
+    } finally {
+      setSettingDefault(null);
+    }
+  };
 
   // A wage only counts while its shift preset still exists. Deleting a shift
   // removes its wages, but this also guards against any orphaned rows left by
@@ -177,7 +181,7 @@ export default function EmployersPage() {
         toast.success('Employer created');
       }
       setModalOpen(false);
-      load();
+      await dataStore.getState().refreshEmployers();
     } catch (err: any) {
       toast.error(err?.response?.data?.message || 'Save failed');
     } finally {
@@ -192,7 +196,14 @@ export default function EmployersPage() {
       await deleteEmployer(deleteTarget.id);
       toast.success('Employer deleted');
       setDeleteTarget(null);
-      load();
+      // Deleting an employee can hand the default to another → re-scope the
+      // calendar / earnings / paid months too.
+      await Promise.all([
+        dataStore.getState().refreshEmployers(),
+        dataStore.getState().refreshCalendar(),
+        dataStore.getState().refreshAnalytics(),
+        dataStore.getState().refreshPaidMonths(),
+      ]);
     } catch (err: any) {
       toast.error(err?.response?.data?.message || 'Delete failed');
     } finally {
@@ -332,6 +343,11 @@ export default function EmployersPage() {
                               emp.isActive ? 'bg-emerald-500' : 'bg-gray-300 dark:bg-gray-600'
                             }`}
                           />
+                          {emp.id === defaultEmployerId && (
+                            <span className="inline-flex items-center gap-1 text-[9px] font-bold uppercase tracking-widest text-[#006d30] bg-[#006d30]/10 rounded-full px-2 py-0.5 flex-shrink-0">
+                              <Star className="h-2.5 w-2.5 fill-[#006d30]" /> Default
+                            </span>
+                          )}
                         </div>
                         <div className="flex items-center gap-1 text-xs text-[#707783] dark:text-gray-400 mt-0.5">
                           <MapPin className="h-3 w-3 flex-shrink-0" />
@@ -361,6 +377,24 @@ export default function EmployersPage() {
                       <Calendar className="h-3.5 w-3.5" />
                       View Shifts
                       <ChevronRight className="h-3.5 w-3.5" />
+                    </button>
+
+                    {/* set default (scopes calendar / earnings / reports) */}
+                    <button
+                      onClick={() => makeDefault(emp)}
+                      disabled={emp.id === defaultEmployerId || !!settingDefault}
+                      className={`w-full flex items-center justify-center gap-1.5 py-2 mb-2 rounded-md text-[11px] font-bold uppercase tracking-widest transition-colors ${
+                        emp.id === defaultEmployerId
+                          ? 'bg-[#006d30]/10 text-[#006d30] cursor-default'
+                          : 'border border-[#006d30]/25 text-[#006d30] hover:bg-[#006d30]/[0.06]'
+                      } disabled:opacity-60`}
+                    >
+                      {settingDefault === emp.id ? (
+                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                      ) : (
+                        <Star className={`h-3.5 w-3.5 ${emp.id === defaultEmployerId ? 'fill-[#006d30]' : ''}`} />
+                      )}
+                      {emp.id === defaultEmployerId ? 'Default employee' : 'Set as default'}
                     </button>
 
                     {/* edit / delete */}

@@ -5,6 +5,8 @@ import { settingsStore, DateFormat, TimeFormat } from '@/store/settingsStore';
 
 export interface SettingsPayload {
   profile: { displayName: string; email: string; profilePicture: string | null };
+  // The default employee id (scopes calendar/earnings/reports); null → onboarding.
+  defaultEmployerId: string | null;
   settings: {
     currency: string;
     nativeCurrency: string;
@@ -38,6 +40,7 @@ function syncStore(p: SettingsPayload) {
     timeFormat: p.settings.timeFormat,
     reportMonths: p.settings.reportMonths,
     clockInType: p.settings.clockInType,
+    defaultEmployerId: p.defaultEmployerId ?? null,
     loaded: true,
   });
 }
@@ -71,4 +74,10 @@ export async function removeProfilePicture(): Promise<SettingsPayload> {
   const data = res.data.data as SettingsPayload;
   syncStore(data);
   return data;
+}
+
+// Permanently delete the user's account and all of its data. Irreversible —
+// the caller must confirm first, then clear local auth state on success.
+export async function deleteAccount(): Promise<void> {
+  await api.delete('/settings/account');
 }

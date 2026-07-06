@@ -17,17 +17,16 @@ import {
   Building2,
   User as UserIcon,
 } from 'lucide-react';
-import { Employer, Shift, Salary } from '@/lib/types';
-import { listEmployers } from '@/lib/services/employers';
+import { Shift, Salary } from '@/lib/types';
 import {
-  listShifts,
   createShift,
   updateShift,
   deleteShift,
 } from '@/lib/services/shifts';
-import { listSalaries, createSalary } from '@/lib/services/salaries';
+import { createSalary, updateSalary, deleteSalary } from '@/lib/services/salaries';
 import { settingsStore } from '@/store/settingsStore';
-import { money, currencySymbol, CURRENCIES, fmtTime } from '@/lib/format';
+import { dataStore } from '@/store/dataStore';
+import { money, currencySymbol, fmtTime } from '@/lib/format';
 
 const labelCls = 'block text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2';
 const inputCls =
@@ -110,10 +109,17 @@ const wageAmount = (w: Salary) =>
   `${currencySymbol(w.currency ?? undefined)}${(w.hourlyPayRate ?? 0).toLocaleString()}/hr`;
 
 export default function ShiftsPage() {
-  const [shifts, setShifts] = useState<Shift[]>([]);
-  const [employers, setEmployers] = useState<Employer[]>([]);
-  const [wages, setWages] = useState<Salary[]>([]);
-  const [loading, setLoading] = useState(true);
+  // Everything comes from the shared preloaded cache — instant render, no spinner
+  // on navigation. Mutations below refresh only the affected slices.
+  const shifts = dataStore((s) => s.shifts);
+  const employers = dataStore((s) => s.employers);
+  const wages = dataStore((s) => s.wages);
+  const loaded = dataStore((s) => s.loaded);
+  const loading = !loaded;
+
+  // The one global currency drives every wage — the user changes it in Settings,
+  // never per-wage (item: "use the global currency here").
+  const globalCurrency = settingsStore((s) => s.currency);
 
   const [filter, setFilter] = useState<Filter>('all');
   const [search, setSearch] = useState('');
@@ -126,34 +132,34 @@ export default function ShiftsPage() {
   const [deleteTarget, setDeleteTarget] = useState<Shift | null>(null);
   const [deleting, setDeleting] = useState(false);
 
-  // Add Wages modal — single step now (employee is inherited from the shift).
+  // Add/Edit Wages modal — single step (employee is inherited from the shift).
+  // `editingWage` non-null means we're editing an existing wage rather than
+  // creating one.
   const [wageOpen, setWageOpen] = useState(false);
+  const [editingWage, setEditingWage] = useState<Salary | null>(null);
   const [wageShiftId, setWageShiftId] = useState('');
-  const [wageCurrency, setWageCurrency] = useState('GBP');
   const [wageValue, setWageValue] = useState('');
   const [wageSaving, setWageSaving] = useState(false);
 
-  const load = useCallback(async () => {
-    setLoading(true);
-    try {
-      const [shiftRes, empRes, wageRes] = await Promise.all([
-        listShifts({ limit: 100 }),
-        listEmployers({ limit: 100 }),
-        listSalaries({ limit: 100 }),
-      ]);
-      setShifts(shiftRes.data);
-      setEmployers(empRes.data);
-      setWages(wageRes.data);
-    } catch {
-      toast.error('Failed to load shifts');
-    } finally {
-      setLoading(false);
-    }
+  // Wage deletion confirm.
+  const [wageDeleteTarget, setWageDeleteTarget] = useState<Salary | null>(null);
+  const [wageDeleting, setWageDeleting] = useState(false);
+
+  // Re-pull shifts + wages + analytics after any change (a shift/wage edit can
+  // affect all three). Ensures the cache — and every page reading it — stays true.
+  const syncShiftData = useCallback(async () => {
+    await Promise.all([
+      dataStore.getState().refreshShifts(),
+      dataStore.getState().refreshWages(),
+      dataStore.getState().refreshAnalytics(),
+    ]);
   }, []);
 
+  // Fill the cache if the user deep-linked straight here before the layout
+  // preload finished (safe no-op once loaded).
   useEffect(() => {
-    load();
-  }, [load]);
+    dataStore.getState().loadAll();
+  }, []);
 
   const employerName = (id?: string | null) =>
     employers.find((e) => e.id === id)?.employerName ?? 'Unassigned';
@@ -220,7 +226,7 @@ export default function ShiftsPage() {
         toast.success('Shift created');
       }
       setModalOpen(false);
-      load();
+      syncShiftData();
     } catch (err: any) {
       toast.error(err?.response?.data?.message || 'Save failed');
     } finally {
@@ -235,7 +241,7 @@ export default function ShiftsPage() {
       await deleteShift(deleteTarget.id);
       toast.success('Shift deleted');
       setDeleteTarget(null);
-      load();
+      syncShiftData();
     } catch (err: any) {
       toast.error(err?.response?.data?.message || 'Delete failed');
     } finally {
@@ -243,11 +249,18 @@ export default function ShiftsPage() {
     }
   };
 
-  // ── Add Wages ────────────────────────────────
+  // ── Add / Edit Wages ─────────────────────────
   const openWages = () => {
+    setEditingWage(null);
     setWageShiftId('');
-    setWageCurrency(settingsStore.getState().currency || 'GBP');
     setWageValue('');
+    setWageOpen(true);
+  };
+
+  const openEditWage = (wage: Salary) => {
+    setEditingWage(wage);
+    setWageShiftId(wage.shiftId ?? '');
+    setWageValue(wage.hourlyPayRate != null ? String(wage.hourlyPayRate) : '');
     setWageOpen(true);
   };
 
@@ -263,19 +276,45 @@ export default function ShiftsPage() {
     }
     setWageSaving(true);
     try {
-      await createSalary({
-        shiftId: wageShiftId,
-        hourlyPayRate: rate,
-        rateType: 'hourly',
-        currency: wageCurrency,
-      });
-      toast.success('Wage created');
+      if (editingWage) {
+        // Currency always follows the global setting — it's never chosen per wage.
+        await updateSalary(editingWage.id, {
+          shiftId: wageShiftId,
+          hourlyPayRate: rate,
+          rateType: 'hourly',
+          currency: globalCurrency,
+        });
+        toast.success('Wage updated');
+      } else {
+        await createSalary({
+          shiftId: wageShiftId,
+          hourlyPayRate: rate,
+          rateType: 'hourly',
+          currency: globalCurrency,
+        });
+        toast.success('Wage created');
+      }
       setWageOpen(false);
-      load();
+      syncShiftData();
     } catch (err: any) {
-      toast.error(err?.response?.data?.message || 'Failed to create wage');
+      toast.error(err?.response?.data?.message || 'Failed to save wage');
     } finally {
       setWageSaving(false);
+    }
+  };
+
+  const confirmDeleteWage = async () => {
+    if (!wageDeleteTarget) return;
+    setWageDeleting(true);
+    try {
+      await deleteSalary(wageDeleteTarget.id);
+      toast.success('Wage deleted');
+      setWageDeleteTarget(null);
+      syncShiftData();
+    } catch (err: any) {
+      toast.error(err?.response?.data?.message || 'Delete failed');
+    } finally {
+      setWageDeleting(false);
     }
   };
 
@@ -416,6 +455,23 @@ export default function ShiftsPage() {
                     <span className="font-mono text-lg font-semibold text-[#005ea3] dark:text-[#a0c9ff]">
                       {wageAmount(w)}
                     </span>
+                  </div>
+                  {/* Wage actions — edit or delete this rate. */}
+                  <div className="flex gap-2 mt-3">
+                    <button
+                      onClick={() => openEditWage(w)}
+                      className="flex-1 flex items-center justify-center gap-1.5 py-2 border border-[#005ea3]/15 dark:border-gray-700 text-[#005ea3] dark:text-[#a0c9ff] hover:bg-[#005ea3]/[0.06] transition-colors text-[11px] font-bold uppercase tracking-widest rounded-md"
+                    >
+                      <Edit className="h-3.5 w-3.5" />
+                      Edit
+                    </button>
+                    <button
+                      onClick={() => setWageDeleteTarget(w)}
+                      className="flex-1 flex items-center justify-center gap-1.5 py-2 border border-red-100 dark:border-red-900/50 text-red-400 hover:bg-red-50 dark:hover:bg-red-900/50 transition-colors text-[11px] font-bold uppercase tracking-widest rounded-md"
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                      Delete
+                    </button>
                   </div>
                 </div>
               ))}
@@ -662,11 +718,11 @@ export default function ShiftsPage() {
         </div>
       </Modal>
 
-      {/* Add Wages modal — single step (employee inherited from the shift) */}
+      {/* Add / Edit Wages modal — single step (employee inherited from the shift) */}
       <Modal
         open={wageOpen}
         onClose={() => setWageOpen(false)}
-        title="Add Wages"
+        title={editingWage ? 'Edit Wage' : 'Add Wages'}
         maxWidth="max-w-lg"
         footer={
           <>
@@ -682,7 +738,7 @@ export default function ShiftsPage() {
               className={`flex-[2] ${primaryBtn}`}
               style={primaryStyle}
             >
-              {wageSaving ? 'Saving…' : 'Create Wages'}
+              {wageSaving ? 'Saving…' : editingWage ? 'Save Changes' : 'Create Wages'}
             </button>
           </>
         }
@@ -712,25 +768,27 @@ export default function ShiftsPage() {
               </p>
             )}
           </div>
+          {/* Currency is fixed to the global setting — not chosen per wage.
+              Change it once in Settings and every wage follows. */}
           <div>
             <label className={labelCls}>Currency</label>
-            <select
-              value={wageCurrency}
-              onChange={(e) => setWageCurrency(e.target.value)}
-              className={inputCls}
-            >
-              {CURRENCIES.map((c) => (
-                <option key={c} value={c}>
-                  {c} ({currencySymbol(c).trim()})
-                </option>
-              ))}
-            </select>
+            <div className={`${inputCls} flex items-center justify-between bg-gray-100 dark:bg-gray-800/60 cursor-not-allowed`}>
+              <span className="font-mono text-[#005ea3] dark:text-[#a0c9ff]">
+                {globalCurrency} ({currencySymbol(globalCurrency).trim()})
+              </span>
+              <span className="text-[10px] font-bold uppercase tracking-widest text-gray-400">
+                Global
+              </span>
+            </div>
+            <p className="text-[11px] text-gray-400 mt-1.5">
+              Uses your global currency. Change it in Settings.
+            </p>
           </div>
           <div>
             <label className={labelCls}>Hourly Rate</label>
             <div className="relative">
               <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 text-sm">
-                {currencySymbol(wageCurrency)}
+                {currencySymbol(globalCurrency)}
               </span>
               <input
                 type="number"
@@ -752,13 +810,13 @@ export default function ShiftsPage() {
                 Per-day Salary
               </p>
               <p className="text-[11px] text-gray-400 mt-0.5">
-                {wageShift ? `${wageShift.totalHours ?? 0}h × ${currencySymbol(wageCurrency)}${wageValue || 0}/hr` : 'Pick a shift'}
+                {wageShift ? `${wageShift.totalHours ?? 0}h × ${currencySymbol(globalCurrency)}${wageValue || 0}/hr` : 'Pick a shift'}
               </p>
             </div>
             <span className="font-mono text-xl font-semibold text-[#005ea3] dark:text-[#a0c9ff]">
               {wagePerDay == null
                 ? '—'
-                : `${currencySymbol(wageCurrency)}${(Math.round(wagePerDay * 100) / 100).toLocaleString()}`}
+                : `${currencySymbol(globalCurrency)}${(Math.round(wagePerDay * 100) / 100).toLocaleString()}`}
             </span>
           </div>
         </div>
@@ -771,6 +829,15 @@ export default function ShiftsPage() {
         loading={deleting}
         onConfirm={confirmDelete}
         onCancel={() => setDeleteTarget(null)}
+      />
+
+      <ConfirmDialog
+        open={!!wageDeleteTarget}
+        title="Delete wage?"
+        message="Remove this hourly rate? The shift keeps its hours but no longer contributes pay until you add a new wage."
+        loading={wageDeleting}
+        onConfirm={confirmDeleteWage}
+        onCancel={() => setWageDeleteTarget(null)}
       />
     </DashboardLayout>
   );

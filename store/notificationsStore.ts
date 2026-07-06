@@ -32,6 +32,8 @@ interface NotificationsState {
   markRead: (id: string) => Promise<void>;
   markAllRead: () => Promise<void>;
   remove: (id: string) => Promise<void>;
+  /** Wipe the feed on logout so it doesn't leak into the next session. */
+  reset: () => void;
 }
 
 export const notificationsStore = create<NotificationsState>((set, get) => ({
@@ -92,4 +94,6 @@ export const notificationsStore = create<NotificationsState>((set, get) => ({
       get().refresh().catch(() => {});
     }
   },
+
+  reset: () => set({ items: [], unread: 0, loaded: false, seenIds: new Set<string>() }),
 }));

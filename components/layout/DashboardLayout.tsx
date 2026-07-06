@@ -6,6 +6,8 @@ import { DesktopSidebar } from './DesktopSidebar';
 import { MobileBottomNav } from './MobileBottomNav';
 import { getSettings } from '@/lib/services/settings';
 import { useNotificationsSync } from '@/hooks/useNotificationsSync';
+import { useDataSync } from '@/hooks/useDataSync';
+import { OnboardingGate } from '@/components/onboarding/OnboardingGate';
 
 interface DashboardLayoutProps {
   children: ReactNode;
@@ -17,6 +19,10 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
   // Single notifications poller for the whole dashboard (feeds sidebar badge,
   // dashboard feed and notifications page; toasts due reminders).
   useNotificationsSync();
+
+  // Preload every module's data once after login so page navigation is instant
+  // (pages read from the shared dataStore instead of re-fetching on mount).
+  useDataSync();
 
   // Load the user's global preferences (currency / date / time) once.
   useEffect(() => {
@@ -39,6 +45,9 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
 
       {/* Mobile Bottom Navigation */}
       {isMobile && <MobileBottomNav />}
+
+      {/* Blocks the app until the user has created their first (default) employee. */}
+      <OnboardingGate />
     </div>
   );
 }

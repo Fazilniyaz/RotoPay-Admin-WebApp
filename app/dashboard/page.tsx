@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { DashboardGreeting } from '@/components/dashboard/DashboardGreeting';
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
@@ -32,11 +32,9 @@ import {
   type LucideIcon,
 } from 'lucide-react';
 import Link from 'next/link';
-import { Shift, CalendarEntry } from '@/lib/types';
+import { Shift } from '@/lib/types';
 import { notificationsStore } from '@/store/notificationsStore';
-import { listShifts } from '@/lib/services/shifts';
-import { listCalendar } from '@/lib/services/calendar';
-import { listEmployers } from '@/lib/services/employers';
+import { dataStore } from '@/store/dataStore';
 import { timeAgo, money, fmtDateShort, fmtTime } from '@/lib/format';
 
 // Icon + colours per activity type for the dashboard timeline.
@@ -225,9 +223,20 @@ export default function DashboardPage() {
   const activitiesLoaded = notificationsStore((s) => s.loaded);
   const activities = allActivities.slice(0, 6);
   const activitiesLoading = !activitiesLoaded;
-  const [shifts, setShifts] = useState<Shift[]>([]);
-  const [assignments, setAssignments] = useState<CalendarEntry[]>([]);
-  const [activeEmployers, setActiveEmployers] = useState(0);
+
+  // Read every figure from the shared preloaded cache — no per-page fetch, so the
+  // dashboard paints instantly on navigation. The layout's useDataSync fills it.
+  const shifts = dataStore((s) => s.shifts);
+  const calendar = dataStore((s) => s.calendar);
+  const employers = dataStore((s) => s.employers);
+  const assignments = useMemo(
+    () => calendar.filter((e) => e.type === 'shift' && e.shiftId),
+    [calendar]
+  );
+  const activeEmployers = useMemo(
+    () => employers.filter((e) => e.isActive).length,
+    [employers]
+  );
 
   useEffect(() => {
     if (isHydrated) {
@@ -238,32 +247,6 @@ export default function DashboardPage() {
       }
     }
   }, [isAuthenticated, isHydrated, router]);
-
-  // Shift presets + calendar assignments + employers drive every stat below.
-  // Assignments (a preset put on a day) are the worked occurrences.
-  useEffect(() => {
-    if (!isHydrated || !isAuthenticated) return;
-    let active = true;
-    const from = new Date();
-    from.setMonth(from.getMonth() - 2);
-    const to = new Date();
-    to.setDate(to.getDate() + 60);
-    Promise.all([
-      listShifts({ limit: 500 }),
-      listCalendar({ from: from.toISOString(), to: to.toISOString() }),
-      listEmployers({ limit: 100 }),
-    ])
-      .then(([shiftRes, calRes, empRes]) => {
-        if (!active) return;
-        setShifts(shiftRes.data);
-        setAssignments(calRes.filter((e) => e.type === 'shift' && e.shiftId));
-        setActiveEmployers(empRes.data.filter((e) => e.isActive).length);
-      })
-      .catch(() => {});
-    return () => {
-      active = false;
-    };
-  }, [isHydrated, isAuthenticated]);
 
   // ── Derive every dashboard figure from the assignments (occurrences) ──
   const now = new Date();

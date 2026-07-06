@@ -22,9 +22,22 @@ export interface ListEmployersParams {
 
 export async function listEmployers(
   params?: ListEmployersParams
-): Promise<{ data: Employer[]; meta?: PaginationMeta }> {
+): Promise<{ data: Employer[]; meta?: PaginationMeta; defaultEmployerId?: string | null }> {
   const res = await api.get<ApiResponse<Employer[]>>('/employers', { params });
-  return { data: res.data.data ?? [], meta: res.data.meta };
+  return {
+    data: res.data.data ?? [],
+    meta: res.data.meta,
+    // The backend tags the default employee id in meta.
+    defaultEmployerId: (res.data.meta as { defaultEmployerId?: string | null } | undefined)
+      ?.defaultEmployerId ?? null,
+  };
+}
+
+// Make an employee the default — the one that scopes calendar / earnings /
+// reports. Returns the updated employer (isDefault: true).
+export async function setDefaultEmployer(id: string): Promise<Employer> {
+  const res = await api.patch<ApiResponse<Employer>>(`/employers/${id}/set-default`);
+  return res.data.data as Employer;
 }
 
 export async function createEmployer(input: EmployerInput): Promise<Employer> {

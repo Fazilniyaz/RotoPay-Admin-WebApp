@@ -35,6 +35,9 @@ export interface Employer {
   employerName: string;
   notes?: string;
   isActive: boolean;
+  // True when this is the user's default employee — the one that scopes the
+  // calendar, earnings and reports until another is set as default.
+  isDefault?: boolean;
   createdAt: string;
   updatedAt?: string;
 }
