@@ -1,5 +1,15 @@
 import axios, { AxiosError, AxiosResponse } from 'axios';
 import { authStore } from '@/store/authStore';
+import { getRecaptchaToken } from '@/lib/recaptcha';
+
+// Sensitive auth endpoints → reCAPTCHA v3 action name. A token is fetched and
+// attached automatically so no form has to know about reCAPTCHA.
+const RECAPTCHA_ACTIONS: Array<[string, string]> = [
+  ['/auth/login', 'login'],
+  ['/auth/register', 'register'],
+  ['/auth/forgot-password', 'forgot_password'],
+  ['/auth/resend-verification', 'resend'],
+];
 
 const baseURL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
 
@@ -31,12 +41,20 @@ const processQueue = (error: Error | null, token: string | null = null) => {
   failedQueue = [];
 };
 
-// Request interceptor - attach access token
+// Request interceptor - attach access token + reCAPTCHA token on auth endpoints
 api.interceptors.request.use(
-  (config) => {
+  async (config) => {
     const token = authStore.getState().accessToken;
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
+    }
+
+    // Frictionless reCAPTCHA v3 on sensitive auth calls (no-op when unconfigured).
+    const url = config.url || '';
+    const match = RECAPTCHA_ACTIONS.find(([path]) => url.includes(path));
+    if (match) {
+      const rc = await getRecaptchaToken(match[1]);
+      if (rc) config.headers['X-Recaptcha-Token'] = rc;
     }
     return config;
   },
