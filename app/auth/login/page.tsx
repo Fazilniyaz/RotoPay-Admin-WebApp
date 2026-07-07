@@ -283,7 +283,7 @@ export default function LoginPage() {
 
           <div className="rp-banner-logo" style={{ position: 'relative', zIndex: 1 }}>
             <span className="rp-wordmark">RotaPay</span>
-            <p className="rp-banner-tagline">Precision Earnings &amp; Time Management</p>
+            <p className="rp-banner-tagline">Earnings &amp; Time Management</p>
           </div>
 
           <div style={{ position: 'relative', zIndex: 1 }}>
