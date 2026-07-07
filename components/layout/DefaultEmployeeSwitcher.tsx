@@ -14,6 +14,7 @@ import { Users, Check, ChevronsUpDown, Loader2, Star } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
+  DropdownMenuGroup,
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuSeparator,
@@ -61,13 +62,13 @@ export function DefaultEmployeeSwitcher({ collapsed }: { collapsed: boolean }) {
         .rp-emp-switch { display: flex; flex-direction: column; }
         .rp-emp-caption {
           font-size: 9px; font-weight: 800; letter-spacing: 0.11em; text-transform: uppercase;
-          color: #707783; padding: 0 6px; margin: 0 0 6px;
+          color: #707783; padding: 0 6px; margin: 0 0 3px;
           display: flex; align-items: center; gap: 5px;
         }
         .dark .rp-emp-caption { color: #9ca3af; }
         .rp-emp-card {
-          display: flex; align-items: center; gap: 10px; width: 100%;
-          padding: 9px 11px; border-radius: 11px;
+          display: flex; align-items: center; gap: 9px; width: 100%;
+          padding: 6px 9px; border-radius: 10px;
           background: linear-gradient(135deg, rgba(0,94,163,0.07), rgba(0,109,48,0.07));
           border: 1px solid rgba(0,94,163,0.14);
           cursor: pointer; text-align: left; transition: background 0.15s, border-color 0.15s;
@@ -77,19 +78,19 @@ export function DefaultEmployeeSwitcher({ collapsed }: { collapsed: boolean }) {
         .dark .rp-emp-card { background: rgba(160,201,255,0.07); border-color: rgba(160,201,255,0.12); }
         .dark .rp-emp-card:hover { background: rgba(160,201,255,0.12); }
         .rp-emp-avatar {
-          width: 34px; height: 34px; border-radius: 9px; flex-shrink: 0;
+          width: 30px; height: 30px; border-radius: 8px; flex-shrink: 0;
           background: linear-gradient(135deg, #005ea3, #006d30);
-          color: #fff; font-size: 12px; font-weight: 700;
+          color: #fff; font-size: 11px; font-weight: 700;
           display: flex; align-items: center; justify-content: center;
         }
         .rp-emp-info { flex: 1; min-width: 0; }
         .rp-emp-name {
-          font-size: 13px; font-weight: 700; color: #1b1c1c; margin: 0;
+          font-size: 12.5px; font-weight: 700; color: #1b1c1c; margin: 0;
           white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
         }
         .dark .rp-emp-name { color: #f9fafb; }
         .rp-emp-sub {
-          font-size: 10px; color: #707783; margin: 1px 0 0;
+          font-size: 10px; color: #707783; margin: 0;
           white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
         }
         .dark .rp-emp-sub { color: #9ca3af; }
@@ -117,25 +118,27 @@ export function DefaultEmployeeSwitcher({ collapsed }: { collapsed: boolean }) {
             <ChevronsUpDown size={14} className="rp-emp-chevron" style={{ flexShrink: 0, color: '#707783' }} />
           </DropdownMenuTrigger>
           <DropdownMenuContent align={collapsed ? 'center' : 'start'} side="top" className="w-56">
-            <DropdownMenuLabel className="flex items-center gap-1.5 text-[10px] uppercase tracking-wider text-muted-foreground">
-              <Users className="h-3.5 w-3.5" /> Switch employee
-            </DropdownMenuLabel>
-            <DropdownMenuSeparator />
-            {employers.map((emp) => {
-              const isCurrent = emp.id === defaultEmployerId;
-              return (
-                <DropdownMenuItem key={emp.id} onClick={() => pick(emp.id)} className="gap-2">
-                  <span className="flex h-6 w-6 items-center justify-center rounded-md bg-[#005ea3]/10 text-[10px] font-bold text-[#005ea3] dark:text-[#a0c9ff]">
-                    {initialsOf(emp.employerName)}
-                  </span>
-                  <span className="flex-1 min-w-0">
-                    <span className="block truncate text-sm font-semibold">{emp.employerName}</span>
-                    <span className="block truncate text-[11px] text-muted-foreground">{emp.store}</span>
-                  </span>
-                  {isCurrent && <Check className="h-4 w-4 text-[#006d30]" />}
-                </DropdownMenuItem>
-              );
-            })}
+            <DropdownMenuGroup>
+              <DropdownMenuLabel className="flex items-center gap-1.5 text-[10px] uppercase tracking-wider text-muted-foreground">
+                <Users className="h-3.5 w-3.5" /> Switch employee
+              </DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              {employers.map((emp) => {
+                const isCurrent = emp.id === defaultEmployerId;
+                return (
+                  <DropdownMenuItem key={emp.id} onClick={() => pick(emp.id)} className="gap-2">
+                    <span className="flex h-6 w-6 items-center justify-center rounded-md bg-[#005ea3]/10 text-[10px] font-bold text-[#005ea3] dark:text-[#a0c9ff]">
+                      {initialsOf(emp.employerName)}
+                    </span>
+                    <span className="flex-1 min-w-0">
+                      <span className="block truncate text-sm font-semibold">{emp.employerName}</span>
+                      <span className="block truncate text-[11px] text-muted-foreground">{emp.store}</span>
+                    </span>
+                    {isCurrent && <Check className="h-4 w-4 text-[#006d30]" />}
+                  </DropdownMenuItem>
+                );
+              })}
+            </DropdownMenuGroup>
           </DropdownMenuContent>
         </DropdownMenu>
       </div>

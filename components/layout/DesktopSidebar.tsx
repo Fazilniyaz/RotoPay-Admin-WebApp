@@ -90,7 +90,7 @@ export function DesktopSidebar() {
           align-items: center;
           justify-content: space-between;
           gap: 10px;
-          padding: 28px 16px 20px;
+          padding: 20px 16px 16px;
           border-bottom: 1px solid rgba(0, 94, 163, 0.08);
         }
 
@@ -157,10 +157,10 @@ export function DesktopSidebar() {
         .rp-nav {
           flex: 1;
           overflow-y: auto;
-          padding: 16px 10px;
+          padding: 12px 10px;
           display: flex;
           flex-direction: column;
-          gap: 4px;
+          gap: 2px;
           scrollbar-width: none;
         }
 
@@ -172,13 +172,13 @@ export function DesktopSidebar() {
           display: flex;
           align-items: center;
           gap: 12px;
-          padding: 10px 14px;
+          padding: 8px 14px;
           border-radius: 10px;
           text-decoration: none;
           transition: background 0.15s, color 0.15s, transform 0.15s;
           color: #404752;
           font-family: 'Montserrat', sans-serif;
-          font-size: 15px;
+          font-size: 14px;
           font-weight: 600;
           white-space: nowrap;
           overflow: hidden;
@@ -228,11 +228,11 @@ export function DesktopSidebar() {
         }
 
         .rp-sidebar-footer {
-          padding: 12px 10px 16px;
+          padding: 10px 10px 14px;
           border-top: 1px solid rgba(0, 94, 163, 0.08);
           display: flex;
           flex-direction: column;
-          gap: 8px;
+          gap: 6px;
         }
 
         .dark .rp-sidebar-footer {

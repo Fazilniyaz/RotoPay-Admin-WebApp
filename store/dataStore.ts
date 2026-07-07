@@ -156,11 +156,14 @@ export const dataStore = create<DataState>((set, get) => ({
   },
 
   setDefaultEmployer: async (employerId) => {
+    // The critical call — if this throws, the switch genuinely failed.
     await apiSetDefaultEmployer(employerId);
     // Reflect the new default immediately, then re-pull everything it scopes.
     set({ defaultEmployerId: employerId });
     settingsStore.getState().setSettings({ defaultEmployerId: employerId });
-    await Promise.all([
+    // Refreshes are best-effort: a failing refresh must NOT make a successful
+    // switch look like it failed.
+    await Promise.allSettled([
       get().refreshEmployers(),
       get().refreshCalendar(),
       get().refreshAnalytics(),
