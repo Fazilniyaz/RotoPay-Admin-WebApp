@@ -901,7 +901,7 @@ export default function RegisterPage() {
               <div>
                 <h2 className="rp-banner-headline">Financial precision,<br />delivered.</h2>
                 <p className="rp-banner-sub">
-                  Experience the future of high-performance payroll. Join professionals who demand clarity, speed, and effortless financial control.
+                  Experience the future of high-performance workforce management. Join professionals who demand clarity, speed, and effortless financial control.
                 </p>
               </div>
 
@@ -1158,7 +1158,7 @@ export default function RegisterPage() {
           </div>
 
           {/* Mobile footer */}
-          <footer className="rp-footer">© 2024 RotaPay Precision Payroll</footer>
+          <footer className="rp-footer">© 2024 RotaPay Workforce Management</footer>
         </div>
 
       </div>

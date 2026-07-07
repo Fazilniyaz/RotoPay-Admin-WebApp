@@ -118,7 +118,7 @@ export function OnboardingGate() {
           </div>
           <h2 className="text-2xl font-extrabold leading-tight pr-10">Let’s add your first employee</h2>
           <p className="text-sm text-white/85 mt-1.5">
-            Create a default employee to continue. Your calendar, earnings and reports are organised
+            Create a default employee to continue. All your modules are organised
             per employee — you can add more and switch the default later.
           </p>
         </div>

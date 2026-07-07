@@ -10,7 +10,7 @@ export const metadata: Metadata = {
   },
   description:
     "Manage shifts, track earnings, and stay on top of your work schedule with RotaPay.",
-  keywords: ["workforce management", "shift scheduling", "payroll", "time tracking"],
+  keywords: ["workforce management", "shift scheduling", "wages", "time tracking"],
   robots: { index: false, follow: false },
 };
 

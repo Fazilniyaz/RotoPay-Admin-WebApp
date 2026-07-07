@@ -16,7 +16,7 @@ const features = [
   },
   {
     icon: TrendingUp,
-    title: 'Automated Payroll',
+    title: 'Automated Wages',
     desc: 'Wages calculated automatically from shift data. No manual entry, no errors.',
   },
   {
@@ -283,13 +283,13 @@ export default function LoginPage() {
 
           <div className="rp-banner-logo" style={{ position: 'relative', zIndex: 1 }}>
             <span className="rp-wordmark">RotaPay</span>
-            <p className="rp-banner-tagline">Precision Payroll &amp; Time Management</p>
+            <p className="rp-banner-tagline">Precision Earnings &amp; Time Management</p>
           </div>
 
           <div style={{ position: 'relative', zIndex: 1 }}>
             <h2 className="rp-banner-headline">The smarter way to run your workforce</h2>
             <p className="rp-banner-sub">
-              Rotas, payroll, and HR in one platform — built for shift-based businesses across the UK.
+              Rotas, pay, and HR in one platform — built for shift-based businesses across the UK.
             </p>
             <nav aria-label="Platform features">
               {features.map(({ icon: Icon, title, desc }) => (
@@ -323,7 +323,7 @@ export default function LoginPage() {
             {/* Form logo — always shown, centered at the top of the form */}
             <div className="rp-form-logo">
               <img src="/rotapay-logo.png" alt="RotaPay" width={176} height={46} />
-              <p className="rp-form-logo-tag">Precision Payroll &amp; Time Management</p>
+              <p className="rp-form-logo-tag">Precision Earnings &amp; Time Management</p>
             </div>
 
             <h1 className="rp-heading">Sign In</h1>
