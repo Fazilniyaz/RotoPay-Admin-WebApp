@@ -785,6 +785,10 @@ export default function RegisterPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!displayName.trim()) {
+      toast.error('Please enter your full name');
+      return;
+    }
     if (!email || !password || !confirmPassword) {
       toast.error('Please fill in all required fields');
       return;
@@ -798,7 +802,7 @@ export default function RegisterPage() {
       return;
     }
     setIsLoading(true);
-    const result = await register(email, password, displayName);
+    const result = await register(email, password, displayName.trim());
     if (result.success || result.isUnverified) {
       setShowSuccess(true);
     }
@@ -973,7 +977,7 @@ export default function RegisterPage() {
                 {/* Full Name */}
                 <div className="rp-field">
                   <label htmlFor="displayName" className="rp-label">
-                    Full Name <span style={{ fontWeight: 400, textTransform: 'none', letterSpacing: 0 }}>(Optional)</span>
+                    Full Name <span style={{ color: 'var(--rp-error)' }}>*</span>
                   </label>
                   <div className="rp-input-wrap">
                     <span className="rp-icon"><User size={16} /></span>
@@ -985,6 +989,7 @@ export default function RegisterPage() {
                       onChange={(e) => setDisplayName(e.target.value)}
                       disabled={isLoading}
                       autoComplete="name"
+                      required
                     />
                   </div>
                 </div>

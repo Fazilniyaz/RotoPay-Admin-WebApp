@@ -59,7 +59,12 @@ export function middleware(_request: NextRequest) {
   response.headers.set('X-Content-Type-Options', 'nosniff');
   response.headers.set('X-Frame-Options', 'DENY');
   response.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin');
-  response.headers.set('Permissions-Policy', 'camera=(), microphone=(), geolocation=(), browsing-topics=()');
+  // geolocation=(self): the onboarding flow auto-fills a new user's workplace
+  // location from the browser's Geolocation API, so it must be allowed for our
+  // own origin. An empty allowlist — geolocation=() — disables the API entirely
+  // (no permission prompt, instant failure) for every browser. camera/mic stay
+  // fully blocked as the app never uses them.
+  response.headers.set('Permissions-Policy', 'camera=(), microphone=(), geolocation=(self), browsing-topics=()');
   // HTTPS-only for 2 years (browsers ignore this over http, so it's prod-effective).
   response.headers.set('Strict-Transport-Security', 'max-age=63072000; includeSubDomains; preload');
 
