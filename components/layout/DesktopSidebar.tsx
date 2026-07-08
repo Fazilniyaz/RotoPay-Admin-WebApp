@@ -462,7 +462,7 @@ export function DesktopSidebar() {
                 </div>
                 <div className="rp-user-info">
                   <p className="rp-user-name">{user?.displayName}</p>
-                  <p className="rp-user-email">{user?.email}</p>
+                  {/* <p className="rp-user-email">{user?.email}</p> */}
                 </div>
                 {!isCollapsed && (
                   <ChevronDown size={14} style={{ flexShrink: 0, color: '#404752' }} />
