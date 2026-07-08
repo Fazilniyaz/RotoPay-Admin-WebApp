@@ -69,7 +69,7 @@ export function DesktopSidebar() {
           background: rgba(255, 255, 255, 0.88);
           backdrop-filter: blur(16px);
           -webkit-backdrop-filter: blur(16px);
-          border-right: 1px solid rgba(58,146,149, 0.10);
+          border-right: 1px solid rgba(2,69,122, 0.10);
           transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
           font-family: 'Montserrat', sans-serif;
           display: flex;
@@ -82,7 +82,7 @@ export function DesktopSidebar() {
 
         .dark .rp-sidebar {
           background: rgba(17, 24, 39, 0.92);
-          border-right-color: rgba(200,230,226, 0.10);
+          border-right-color: rgba(214,232,238, 0.10);
         }
 
         .rp-sidebar-logo {
@@ -91,11 +91,11 @@ export function DesktopSidebar() {
           justify-content: space-between;
           gap: 10px;
           padding: 20px 16px 16px;
-          border-bottom: 1px solid rgba(58,146,149, 0.08);
+          border-bottom: 1px solid rgba(2,69,122, 0.08);
         }
 
         .dark .rp-sidebar-logo {
-          border-bottom-color: rgba(200,230,226, 0.08);
+          border-bottom-color: rgba(214,232,238, 0.08);
         }
 
         .rp-logo-mark {
@@ -128,7 +128,7 @@ export function DesktopSidebar() {
           height: 28px;
           flex-shrink: 0;
           border-radius: 8px;
-          border: 1px solid rgba(58,146,149, 0.12);
+          border: 1px solid rgba(2,69,122, 0.12);
           background: transparent;
           display: flex;
           align-items: center;
@@ -140,18 +140,18 @@ export function DesktopSidebar() {
         }
 
         .rp-collapse-btn:hover {
-          background: rgba(58,146,149, 0.08);
-          color: #3a9295;
+          background: rgba(2,69,122, 0.08);
+          color: #02457a;
         }
 
         .dark .rp-collapse-btn {
-          border-color: rgba(200,230,226, 0.15);
+          border-color: rgba(214,232,238, 0.15);
           color: #9ca3af;
         }
 
         .dark .rp-collapse-btn:hover {
-          background: rgba(200,230,226, 0.1);
-          color: #c8e6e2;
+          background: rgba(214,232,238, 0.1);
+          color: #d6e8ee;
         }
 
         .rp-nav {
@@ -186,8 +186,8 @@ export function DesktopSidebar() {
         }
 
         .rp-nav-item:hover {
-          background: rgba(58,146,149, 0.06);
-          color: #3a9295;
+          background: rgba(2,69,122, 0.06);
+          color: #02457a;
         }
 
         .dark .rp-nav-item {
@@ -195,17 +195,17 @@ export function DesktopSidebar() {
         }
 
         .dark .rp-nav-item:hover {
-          background: rgba(200,230,226, 0.08);
-          color: #c8e6e2;
+          background: rgba(214,232,238, 0.08);
+          color: #d6e8ee;
         }
 
         .rp-nav-item.active {
-          background: linear-gradient(135deg, #3a9295 0%, #105f68 100%);
+          background: linear-gradient(135deg, #02457a 0%, #001b48 100%);
           color: #ffffff;
           border-color: transparent;
-          box-shadow: 0 4px 12px rgba(58,146,149, 0.30);
+          box-shadow: 0 4px 12px rgba(2,69,122, 0.30);
           transform: scale(1.02);
-          border-left: 3px solid rgba(106, 255, 144, 0.8);
+          border-left: 3px solid rgba(151,202,219, 0.8);
         }
 
         .rp-nav-item.active:hover {
@@ -229,14 +229,14 @@ export function DesktopSidebar() {
 
         .rp-sidebar-footer {
           padding: 10px 10px 14px;
-          border-top: 1px solid rgba(58,146,149, 0.08);
+          border-top: 1px solid rgba(2,69,122, 0.08);
           display: flex;
           flex-direction: column;
           gap: 6px;
         }
 
         .dark .rp-sidebar-footer {
-          border-top-color: rgba(200,230,226, 0.08);
+          border-top-color: rgba(214,232,238, 0.08);
         }
 
         .rp-theme-row {
@@ -249,8 +249,8 @@ export function DesktopSidebar() {
           gap: 12px;
           padding: 10px 12px;
           border-radius: 12px;
-          background: rgba(58,146,149, 0.05);
-          border: 1px solid rgba(58,146,149, 0.08);
+          background: rgba(2,69,122, 0.05);
+          border: 1px solid rgba(2,69,122, 0.08);
           cursor: pointer;
           transition: background 0.15s;
           width: 100%;
@@ -259,23 +259,23 @@ export function DesktopSidebar() {
         }
 
         .rp-user-card:hover {
-          background: rgba(58,146,149, 0.09);
+          background: rgba(2,69,122, 0.09);
         }
 
         .dark .rp-user-card {
-          background: rgba(200,230,226, 0.06);
-          border-color: rgba(200,230,226, 0.10);
+          background: rgba(214,232,238, 0.06);
+          border-color: rgba(214,232,238, 0.10);
         }
 
         .dark .rp-user-card:hover {
-          background: rgba(200,230,226, 0.10);
+          background: rgba(214,232,238, 0.10);
         }
 
         .rp-user-avatar {
           width: 36px;
           height: 36px;
           border-radius: 50%;
-          background: linear-gradient(135deg, #3a9295, #105f68);
+          background: linear-gradient(135deg, #02457a, #001b48);
           display: flex;
           align-items: center;
           justify-content: center;

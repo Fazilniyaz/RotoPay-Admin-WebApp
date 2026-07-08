@@ -14,8 +14,8 @@ const styles = `
 
   /* ── Tokens ── */
   .rp-ve-root {
-    --rp-primary:           #3a9295;
-    --rp-secondary:         #105f68;
+    --rp-primary:           #02457a;
+    --rp-secondary:         #001b48;
     --rp-error:             #ba1a1a;
     --rp-error-container:   #ffdad6;
     --rp-surface:           #fbf9f8;
@@ -26,7 +26,7 @@ const styles = `
     --rp-on-surface-var:    #404752;
     --rp-outline:           #707783;
     --rp-outline-var:       #c0c7d4;
-    --rp-gradient:          linear-gradient(135deg, #63C1BB 0%, #3A9295 100%);
+    --rp-gradient:          linear-gradient(135deg, #018ABE 0%, #02457A 100%);
   }
 
   .dark .rp-ve-root,
@@ -39,8 +39,8 @@ const styles = `
     --rp-on-surface-var:    #c4c6d0;
     --rp-outline:           #8d9199;
     --rp-outline-var:       #44474f;
-    --rp-primary:           #c8e6e2;
-    --rp-secondary:         #9ed5d1;
+    --rp-primary:           #d6e8ee;
+    --rp-secondary:         #97cadb;
     --rp-error:             #ffb4ab;
     --rp-error-container:   #93000a;
   }
@@ -78,7 +78,7 @@ const styles = `
     height: 380px;
     top: -96px;
     left: -96px;
-    background: #c8e6e2;
+    background: #d6e8ee;
   }
 
   .rp-ve-blob-2 {
@@ -86,7 +86,7 @@ const styles = `
     height: 500px;
     bottom: -192px;
     right: -96px;
-    background: #9ed5d1;
+    background: #97cadb;
   }
 
   /* ── Header ── */
@@ -154,7 +154,7 @@ const styles = `
     border: 1.5px solid var(--rp-outline-var);
     border-radius: 16px;
     padding: 32px 24px;
-    box-shadow: 0 8px 32px -4px rgba(99,193,187, 0.12);
+    box-shadow: 0 8px 32px -4px rgba(1,138,190, 0.12);
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -181,7 +181,7 @@ const styles = `
     justify-content: center;
     color: #fff;
     font-size: 28px;
-    box-shadow: 0 6px 20px rgba(99,193,187,0.22);
+    box-shadow: 0 6px 20px rgba(1,138,190,0.22);
     flex-shrink: 0;
   }
 
@@ -205,12 +205,12 @@ const styles = `
   }
 
   .rp-ve-status-icon--success {
-    background: rgba(16,95,104, 0.10);
+    background: rgba(0,27,72, 0.10);
     color: var(--rp-secondary);
   }
 
   .dark .rp-ve-status-icon--success {
-    background: rgba(106, 255, 144, 0.13);
+    background: rgba(151,202,219, 0.13);
     color: var(--rp-secondary);
   }
 
@@ -224,7 +224,7 @@ const styles = `
   }
 
   .rp-ve-status-icon--loading {
-    background: rgba(58,146,149, 0.10);
+    background: rgba(2,69,122, 0.10);
     color: var(--rp-primary);
   }
 
@@ -270,7 +270,7 @@ const styles = `
     align-items: center;
     justify-content: center;
     gap: 8px;
-    box-shadow: 0 4px 16px rgba(99,193,187,0.22);
+    box-shadow: 0 4px 16px rgba(1,138,190,0.22);
     transition: transform 0.2s, box-shadow 0.2s, opacity 0.2s;
     text-decoration: none;
     margin-top: 8px;
@@ -278,7 +278,7 @@ const styles = `
 
   .rp-ve-btn-primary:hover:not(:disabled) {
     transform: scale(1.02);
-    box-shadow: 0 8px 22px rgba(99,193,187,0.28);
+    box-shadow: 0 8px 22px rgba(1,138,190,0.28);
   }
 
   .rp-ve-btn-primary:active:not(:disabled) { transform: scale(0.98); }
@@ -305,7 +305,7 @@ const styles = `
 
   .rp-ve-btn-outline:hover {
     border-color: var(--rp-primary);
-    background: rgba(58,146,149, 0.05);
+    background: rgba(2,69,122, 0.05);
   }
 
   .rp-ve-btn-row {

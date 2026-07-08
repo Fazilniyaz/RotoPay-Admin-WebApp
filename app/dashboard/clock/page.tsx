@@ -18,10 +18,10 @@ import { listSalaries } from '@/lib/services/salaries';
 import { getActiveClocks, clockIn, clockOut, listClock } from '@/lib/services/clock';
 import { money, currencySymbol, fmtDateShort as fmtDate, fmtTime } from '@/lib/format';
 
-const GRADIENT = 'linear-gradient(135deg, #3a9295 0%, #105f68 100%)';
+const GRADIENT = 'linear-gradient(135deg, #02457a 0%, #001b48 100%)';
 const primaryStyle = { background: GRADIENT };
 const cardCls =
-  'bg-white dark:bg-[#1f2937] rounded-[10px] border border-[rgba(58,146,149,0.08)] dark:border-[rgba(200,230,226,0.08)] shadow-[0_4px_6px_rgba(99,193,187,0.06),0_2px_4px_rgba(99,193,187,0.04)]';
+  'bg-white dark:bg-[#1f2937] rounded-[10px] border border-[rgba(2,69,122,0.08)] dark:border-[rgba(214,232,238,0.08)] shadow-[0_4px_6px_rgba(1,138,190,0.06),0_2px_4px_rgba(1,138,190,0.04)]';
 
 const pad = (n: number) => String(n).padStart(2, '0');
 const fmtElapsed = (ms: number) => {
@@ -158,17 +158,17 @@ export default function ClockPage() {
       <div className="space-y-6">
         {/* Header */}
         <div>
-          <h1 className="text-3xl font-extrabold text-[#3a9295]">Time Clock</h1>
+          <h1 className="text-3xl font-extrabold text-[#02457a]">Time Clock</h1>
           <p className="text-sm text-gray-400 mt-0.5">Track worked hours &amp; earnings in real time</p>
         </div>
 
         {/* Gradient hero: live clock + clock-in control */}
         <div
-          className="relative overflow-hidden rounded-[10px] p-6 sm:p-8 text-white shadow-[0_8px_24px_rgba(58,146,149,0.25)]"
+          className="relative overflow-hidden rounded-[10px] p-6 sm:p-8 text-white shadow-[0_8px_24px_rgba(2,69,122,0.25)]"
           style={primaryStyle}
         >
           <div className="absolute -right-12 -top-14 w-48 h-48 rounded-full bg-white/10 blur-2xl pointer-events-none" />
-          <div className="absolute -left-10 -bottom-20 w-52 h-52 rounded-full bg-[#9ed5d1]/15 blur-2xl pointer-events-none" />
+          <div className="absolute -left-10 -bottom-20 w-52 h-52 rounded-full bg-[#97cadb]/15 blur-2xl pointer-events-none" />
 
           <div className="relative grid lg:grid-cols-2 gap-6 lg:gap-8 items-center">
             {/* Live clock */}
@@ -211,7 +211,7 @@ export default function ClockPage() {
                 <button
                   onClick={doClockIn}
                   disabled={busyIn || clockable.length === 0}
-                  className="inline-flex items-center justify-center gap-2 bg-white text-[#3a9295] px-6 py-3 rounded-md text-[12px] font-bold uppercase tracking-widest hover:bg-white/90 transition-colors disabled:opacity-50"
+                  className="inline-flex items-center justify-center gap-2 bg-white text-[#02457a] px-6 py-3 rounded-md text-[12px] font-bold uppercase tracking-widest hover:bg-white/90 transition-colors disabled:opacity-50"
                 >
                   <Play className="h-4 w-4 fill-current" />
                   {busyIn ? '…' : 'Clock In'}
@@ -237,7 +237,7 @@ export default function ClockPage() {
                     <p className="text-[9px] sm:text-[11px] font-bold uppercase tracking-[0.07em] text-[#707783] dark:text-gray-400 mb-1">
                       {c.label}
                     </p>
-                    <p className="font-mono text-lg sm:text-2xl font-medium text-[#3a9295] dark:text-[#c8e6e2] truncate">
+                    <p className="font-mono text-lg sm:text-2xl font-medium text-[#02457a] dark:text-[#d6e8ee] truncate">
                       {c.value}
                     </p>
                   </div>
@@ -263,7 +263,7 @@ export default function ClockPage() {
             {active.length > 0 && (
               <div>
                 <h3 className="text-[11px] font-bold uppercase tracking-widest text-[#707783] dark:text-gray-400 mb-3 flex items-center gap-2">
-                  <span className="w-1.5 h-1.5 rounded-full bg-[#3A9295] pulse-glow" />
+                  <span className="w-1.5 h-1.5 rounded-full bg-[#02457A] pulse-glow" />
                   Currently Clocked In
                 </h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -294,8 +294,8 @@ export default function ClockPage() {
                                 </p>
                               </div>
                             </div>
-                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wider bg-[#C8E6E2] text-[#105F68] dark:bg-[#105F68]/40 dark:text-[#9ED5D1] flex-shrink-0">
-                              <span className="w-1.5 h-1.5 rounded-full bg-[#3A9295] pulse-glow" />
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wider bg-[#D6E8EE] text-[#001B48] dark:bg-[#001B48]/40 dark:text-[#97CADB] flex-shrink-0">
+                              <span className="w-1.5 h-1.5 rounded-full bg-[#02457A] pulse-glow" />
                               Live
                             </span>
                           </div>
@@ -304,20 +304,20 @@ export default function ClockPage() {
                             {fmtElapsed(elapsedMs)}
                           </p>
 
-                          <div className="grid grid-cols-2 rounded-md bg-[#3a9295]/[0.04] dark:bg-white/5 border border-[#3a9295]/[0.06] dark:border-white/5 p-2.5 my-4">
+                          <div className="grid grid-cols-2 rounded-md bg-[#02457a]/[0.04] dark:bg-white/5 border border-[#02457a]/[0.06] dark:border-white/5 p-2.5 my-4">
                             <div className="text-center">
                               <p className="text-[9px] font-bold uppercase tracking-[0.06em] text-[#707783] dark:text-gray-400 mb-0.5">
                                 Est. Pay
                               </p>
-                              <p className="font-mono text-sm font-semibold text-[#105f68] dark:text-[#63C1BB]">
+                              <p className="font-mono text-sm font-semibold text-[#001b48] dark:text-[#018ABE]">
                                 {money(est)}
                               </p>
                             </div>
-                            <div className="text-center border-l border-[#3a9295]/[0.06] dark:border-white/5">
+                            <div className="text-center border-l border-[#02457a]/[0.06] dark:border-white/5">
                               <p className="text-[9px] font-bold uppercase tracking-[0.06em] text-[#707783] dark:text-gray-400 mb-0.5">
                                 Rate
                               </p>
-                              <p className="font-mono text-sm font-semibold text-[#3a9295] dark:text-[#c8e6e2]">
+                              <p className="font-mono text-sm font-semibold text-[#02457a] dark:text-[#d6e8ee]">
                                 {currencySymbol()}{rate}/h
                               </p>
                             </div>
@@ -342,7 +342,7 @@ export default function ClockPage() {
             {/* History */}
             <div className={`${cardCls} p-5 sm:p-6`}>
               <h3 className="font-bold text-[#1b1c1c] dark:text-white mb-4 flex items-center gap-2">
-                <Timer className="h-4 w-4 text-[#3a9295]" /> Recent Sessions
+                <Timer className="h-4 w-4 text-[#02457a]" /> Recent Sessions
               </h3>
 
               {sessions.length === 0 ? (
@@ -352,7 +352,7 @@ export default function ClockPage() {
                   {/* Desktop table */}
                   <table className="w-full hidden sm:table">
                     <thead>
-                      <tr className="border-b border-[#3a9295]/[0.08] dark:border-white/10">
+                      <tr className="border-b border-[#02457a]/[0.08] dark:border-white/10">
                         {['Employer', 'Date', 'In', 'Out', 'Hours', 'Earnings'].map((h, i) => (
                           <th
                             key={h}
@@ -371,7 +371,7 @@ export default function ClockPage() {
                         return (
                           <tr
                             key={s.id}
-                            className="border-b border-[#3a9295]/[0.05] dark:border-white/5 last:border-0"
+                            className="border-b border-[#02457a]/[0.05] dark:border-white/5 last:border-0"
                           >
                             <td className="py-3">
                               <div className="flex items-center gap-2.5">
@@ -398,7 +398,7 @@ export default function ClockPage() {
                             <td className="py-3 text-sm font-mono text-right text-[#1b1c1c] dark:text-gray-200">
                               {s.totalHours ?? 0}h
                             </td>
-                            <td className="py-3 text-sm font-mono font-bold text-right text-[#105f68] dark:text-[#63C1BB]">
+                            <td className="py-3 text-sm font-mono font-bold text-right text-[#001b48] dark:text-[#018ABE]">
                               {money(s.earnings)}
                             </td>
                           </tr>
@@ -414,7 +414,7 @@ export default function ClockPage() {
                       return (
                         <div
                           key={s.id}
-                          className="flex items-center justify-between gap-3 rounded-md border border-[#3a9295]/[0.08] dark:border-white/10 p-3"
+                          className="flex items-center justify-between gap-3 rounded-md border border-[#02457a]/[0.08] dark:border-white/10 p-3"
                         >
                           <div className="flex items-center gap-2.5 min-w-0">
                             <div
@@ -432,7 +432,7 @@ export default function ClockPage() {
                               </p>
                             </div>
                           </div>
-                          <span className="font-mono font-bold text-[#105f68] dark:text-[#63C1BB] flex-shrink-0">
+                          <span className="font-mono font-bold text-[#001b48] dark:text-[#018ABE] flex-shrink-0">
                             {money(s.earnings)}
                           </span>
                         </div>

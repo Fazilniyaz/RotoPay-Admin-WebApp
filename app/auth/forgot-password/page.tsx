@@ -15,9 +15,9 @@ const styles = `
 
   /* ── Design tokens ── */
   .rp-fp-root {
-    --rp-primary:            #3a9295;
-    --rp-secondary:          #105f68;
-    --rp-tertiary:           #105f68;
+    --rp-primary:            #02457a;
+    --rp-secondary:          #001b48;
+    --rp-tertiary:           #001b48;
     --rp-error:              #ba1a1a;
     --rp-surface:            #fbf9f8;
     --rp-surface-container:  #efeded;
@@ -27,7 +27,7 @@ const styles = `
     --rp-on-surface-var:     #404752;
     --rp-outline:            #707783;
     --rp-outline-var:        #c0c7d4;
-    --rp-gradient:           linear-gradient(135deg, #3a9295 0%, #105f68 100%);
+    --rp-gradient:           linear-gradient(135deg, #02457a 0%, #001b48 100%);
   }
 
   .dark .rp-fp-root,
@@ -40,8 +40,8 @@ const styles = `
     --rp-on-surface-var:     #c4c6d0;
     --rp-outline:            #8d9199;
     --rp-outline-var:        #44474f;
-    --rp-primary:            #c8e6e2;
-    --rp-secondary:          #9ed5d1;
+    --rp-primary:            #d6e8ee;
+    --rp-secondary:          #97cadb;
   }
 
   /* ── Base ── */
@@ -170,11 +170,11 @@ const styles = `
 
   .rp-fp-input:focus {
     border-color: var(--rp-primary);
-    box-shadow: 0 0 0 3px rgba(58,146,149, 0.12);
+    box-shadow: 0 0 0 3px rgba(2,69,122, 0.12);
   }
 
   .dark .rp-fp-input:focus {
-    box-shadow: 0 0 0 3px rgba(200,230,226, 0.15);
+    box-shadow: 0 0 0 3px rgba(214,232,238, 0.15);
   }
 
   .rp-fp-input::placeholder {
@@ -203,14 +203,14 @@ const styles = `
     align-items: center;
     justify-content: center;
     gap: 8px;
-    box-shadow: 0 4px 14px rgba(58,146,149, 0.22);
+    box-shadow: 0 4px 14px rgba(2,69,122, 0.22);
     transition: transform 0.15s, box-shadow 0.15s, opacity 0.15s;
     margin-bottom: 20px;
   }
 
   .rp-fp-btn:hover:not(:disabled) {
     transform: translateY(-1px);
-    box-shadow: 0 6px 20px rgba(58,146,149, 0.3);
+    box-shadow: 0 6px 20px rgba(2,69,122, 0.3);
   }
 
   .rp-fp-btn:active:not(:disabled) {
@@ -251,7 +251,7 @@ const styles = `
     width: 64px;
     height: 64px;
     border-radius: 50%;
-    background: rgba(16,95,104, 0.1);
+    background: rgba(0,27,72, 0.1);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -260,7 +260,7 @@ const styles = `
   }
 
   .dark .rp-fp-success-icon {
-    background: rgba(106, 255, 144, 0.12);
+    background: rgba(151,202,219, 0.12);
   }
 
   .rp-fp-success-email {
