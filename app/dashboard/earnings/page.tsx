@@ -13,12 +13,12 @@ import { settingsStore } from '@/store/settingsStore';
 import { dataStore } from '@/store/dataStore';
 import { money, moneyIn, currencySymbol } from '@/lib/format';
 
-const GRADIENT = 'linear-gradient(135deg, #005ea3 0%, #006d30 100%)';
+const GRADIENT = 'linear-gradient(135deg, #3a9295 0%, #105f68 100%)';
 const primaryStyle = { background: GRADIENT };
 const cardCls =
-  'bg-white dark:bg-[#1f2937] rounded-[10px] border border-[rgba(0,94,163,0.08)] dark:border-[rgba(160,201,255,0.08)] shadow-[0_4px_6px_rgba(0,123,210,0.06),0_2px_4px_rgba(0,123,210,0.04)]';
-const BAR_GRADIENT = 'linear-gradient(to top, #005ea3 0%, #37D36B 100%)';
-const DONUT_COLORS = ['#0077cc', '#37D36B', '#008557', '#005ea3', '#7c3aed', '#b45309'];
+  'bg-white dark:bg-[#1f2937] rounded-[10px] border border-[rgba(58,146,149,0.08)] dark:border-[rgba(200,230,226,0.08)] shadow-[0_4px_6px_rgba(99,193,187,0.06),0_2px_4px_rgba(99,193,187,0.04)]';
+const BAR_GRADIENT = 'linear-gradient(to top, #3a9295 0%, #3A9295 100%)';
+const DONUT_COLORS = ['#63c1bb', '#3A9295', '#105f68', '#3a9295', '#105f68', '#b45309'];
 const WEEKDAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
 const shiftEarnings = (s: Shift) => (s.salaries ?? []).reduce((sum, w) => sum + (w.salary ?? 0), 0);
@@ -35,7 +35,7 @@ function StatCard({ label, value, icon: Icon, caption }: { label: string; value:
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0">
           <p className="text-[11px] font-bold uppercase tracking-[0.07em] text-[#707783] dark:text-gray-400 mb-1.5">{label}</p>
-          <p className="font-mono text-xl sm:text-2xl font-medium text-[#005ea3] dark:text-[#a0c9ff] truncate">{value}</p>
+          <p className="font-mono text-xl sm:text-2xl font-medium text-[#3a9295] dark:text-[#c8e6e2] truncate">{value}</p>
           {caption && <p className="text-[10px] text-gray-400 mt-1 truncate">{caption}</p>}
         </div>
         <div className="w-10 h-10 rounded-[10px] flex items-center justify-center flex-shrink-0 shadow-sm" style={primaryStyle}>
@@ -160,7 +160,7 @@ export default function EarningsPage() {
     <DashboardLayout>
       <div className="space-y-6">
         <div>
-          <h1 className="text-3xl font-extrabold text-[#005ea3]">Earnings</h1>
+          <h1 className="text-3xl font-extrabold text-[#3a9295]">Earnings</h1>
           <p className="text-sm text-gray-400 mt-0.5">
             {defaultEmployer
               ? `${defaultEmployer.employerName}’s hours and pay · switch the default in Employees`
@@ -194,7 +194,7 @@ export default function EarningsPage() {
                 <div className="flex items-end justify-between gap-2 h-48">
                   {weekBars.map((b) => (
                     <div key={b.day} className="flex-1 flex flex-col items-center gap-2 h-full justify-end group relative">
-                      <div className="absolute -top-1 text-[10px] font-mono font-bold text-[#005ea3] dark:text-[#a0c9ff] opacity-0 group-hover:opacity-100 transition">{b.hours}h</div>
+                      <div className="absolute -top-1 text-[10px] font-mono font-bold text-[#3a9295] dark:text-[#c8e6e2] opacity-0 group-hover:opacity-100 transition">{b.hours}h</div>
                       <div className="w-full max-w-[34px] rounded-t-md transition-all" style={{ height: `${b.hours > 0 ? Math.max(4, (b.hours / maxHours) * 100) : 2}%`, background: BAR_GRADIENT, opacity: b.hours > 0 ? 1 : 0.25 }} />
                       <span className="text-[10px] font-bold uppercase tracking-widest text-[#707783] dark:text-gray-400">{b.day}</span>
                     </div>
@@ -223,9 +223,9 @@ export default function EarningsPage() {
                           <span className="font-mono text-[#707783] dark:text-gray-400">{money(s.value)}</span>
                         </div>
                       ))}
-                      <div className="flex items-center justify-between text-sm border-t border-[#005ea3]/[0.08] dark:border-white/10 pt-2 mt-2">
+                      <div className="flex items-center justify-between text-sm border-t border-[#3a9295]/[0.08] dark:border-white/10 pt-2 mt-2">
                         <span className="font-bold text-[#1b1c1c] dark:text-white">Total</span>
-                        <span className="font-mono font-semibold text-[#005ea3] dark:text-[#a0c9ff]">{money(donut.total)}</span>
+                        <span className="font-mono font-semibold text-[#3a9295] dark:text-[#c8e6e2]">{money(donut.total)}</span>
                       </div>
                     </div>
                   </div>
@@ -249,11 +249,11 @@ export default function EarningsPage() {
                       <div key={i.label}>
                         <div className="flex items-center justify-between text-xs mb-1">
                           <span className="text-[#707783] dark:text-gray-400 font-medium">{i.label}</span>
-                          <span className="font-mono text-[#005ea3] dark:text-[#a0c9ff]">
+                          <span className="font-mono text-[#3a9295] dark:text-[#c8e6e2]">
                             {i.label.startsWith('Native') ? `${currencySymbol(native.code)}${(Math.round(i.value * 100) / 100).toLocaleString()}` : money(i.value)}
                           </span>
                         </div>
-                        <div className="h-3 rounded-full bg-[#005ea3]/[0.06] dark:bg-white/5 overflow-hidden">
+                        <div className="h-3 rounded-full bg-[#3a9295]/[0.06] dark:bg-white/5 overflow-hidden">
                           <div className="h-full rounded-full" style={{ width: `${Math.max(2, (i.value / max) * 100)}%`, background: GRADIENT }} />
                         </div>
                       </div>

@@ -30,16 +30,16 @@ import { money, currencySymbol, fmtTime } from '@/lib/format';
 
 const labelCls = 'block text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2';
 const inputCls =
-  'w-full bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-md px-4 py-3 focus:border-[#005ea3] focus:ring-2 focus:ring-[#005ea3]/10 outline-none transition-all text-sm';
+  'w-full bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-md px-4 py-3 focus:border-[#3a9295] focus:ring-2 focus:ring-[#3a9295]/10 outline-none transition-all text-sm';
 const primaryBtn =
-  'flex items-center justify-center gap-2 px-5 py-3 text-white text-[11px] font-bold uppercase tracking-widest rounded-lg shadow-[0_4px_14px_rgba(0,94,163,0.25)] hover:-translate-y-0.5 hover:shadow-[0_8px_20px_rgba(0,94,163,0.35)] transition-all disabled:opacity-60 disabled:hover:translate-y-0';
+  'flex items-center justify-center gap-2 px-5 py-3 text-white text-[11px] font-bold uppercase tracking-widest rounded-lg shadow-[0_4px_14px_rgba(58,146,149,0.25)] hover:-translate-y-0.5 hover:shadow-[0_8px_20px_rgba(58,146,149,0.35)] transition-all disabled:opacity-60 disabled:hover:translate-y-0';
 const secondaryBtn =
-  'flex items-center justify-center gap-2 px-5 py-3 text-[11px] font-bold uppercase tracking-widest rounded-lg border border-[#005ea3]/20 text-[#005ea3] dark:text-[#a0c9ff] hover:bg-[#005ea3]/[0.06] transition-all disabled:opacity-60';
+  'flex items-center justify-center gap-2 px-5 py-3 text-[11px] font-bold uppercase tracking-widest rounded-lg border border-[#3a9295]/20 text-[#3a9295] dark:text-[#c8e6e2] hover:bg-[#3a9295]/[0.06] transition-all disabled:opacity-60';
 // Brand gradient + premium card system.
-const GRADIENT = 'linear-gradient(135deg, #005ea3 0%, #006d30 100%)';
+const GRADIENT = 'linear-gradient(135deg, #3a9295 0%, #105f68 100%)';
 const primaryStyle = { background: GRADIENT };
 const cardCls =
-  'bg-white dark:bg-[#1f2937] rounded-[10px] border border-[rgba(0,94,163,0.08)] dark:border-[rgba(160,201,255,0.08)] shadow-[0_4px_6px_rgba(0,123,210,0.06),0_2px_4px_rgba(0,123,210,0.04)] hover:shadow-[0_10px_24px_rgba(0,94,163,0.12)] hover:-translate-y-1 transition-all duration-300';
+  'bg-white dark:bg-[#1f2937] rounded-[10px] border border-[rgba(58,146,149,0.08)] dark:border-[rgba(200,230,226,0.08)] shadow-[0_4px_6px_rgba(99,193,187,0.06),0_2px_4px_rgba(99,193,187,0.04)] hover:shadow-[0_10px_24px_rgba(58,146,149,0.12)] hover:-translate-y-1 transition-all duration-300';
 
 // Preset types + a "custom" escape hatch (user types their own label).
 const PRESET_TYPES = ['day', 'night', 'rotational'] as const;
@@ -59,7 +59,7 @@ const FILTERS: Array<{ value: Filter; label: string }> = [
 ];
 
 // Preset label colours for shifts — a light, matte-finished set.
-const SHIFT_COLORS = ['#7FA9E0', '#6FC8A8', '#E0B36A', '#A88FD8', '#E38FA0', '#6FC0CC'];
+const SHIFT_COLORS = ['#63C1BB', '#C8E6E2', '#9ED5D1', '#3A9295', '#105F68', '#9ED5D1'];
 
 interface ShiftForm {
   shiftName: string;
@@ -360,7 +360,7 @@ export default function ShiftsPage() {
         {/* Header */}
         <div className="flex items-end justify-between gap-3 flex-wrap">
           <div>
-            <h1 className="text-3xl font-extrabold text-[#005ea3]">Shifts</h1>
+            <h1 className="text-3xl font-extrabold text-[#3a9295]">Shifts</h1>
             <p className="text-sm text-gray-400 mt-0.5">
               {shifts.length} preset{shifts.length === 1 ? '' : 's'} · assign them to days on the Calendar
             </p>
@@ -448,11 +448,11 @@ export default function ShiftsPage() {
                       </p>
                     </div>
                   </div>
-                  <div className="flex items-center justify-between border-t border-[#005ea3]/[0.06] dark:border-white/5 pt-3">
+                  <div className="flex items-center justify-between border-t border-[#3a9295]/[0.06] dark:border-white/5 pt-3">
                     <span className="text-[10px] font-bold uppercase tracking-wider text-[#707783] dark:text-gray-400">
                       Per day {money(w.salary)}
                     </span>
-                    <span className="font-mono text-lg font-semibold text-[#005ea3] dark:text-[#a0c9ff]">
+                    <span className="font-mono text-lg font-semibold text-[#3a9295] dark:text-[#c8e6e2]">
                       {wageAmount(w)}
                     </span>
                   </div>
@@ -460,7 +460,7 @@ export default function ShiftsPage() {
                   <div className="flex gap-2 mt-3">
                     <button
                       onClick={() => openEditWage(w)}
-                      className="flex-1 flex items-center justify-center gap-1.5 py-2 border border-[#005ea3]/15 dark:border-gray-700 text-[#005ea3] dark:text-[#a0c9ff] hover:bg-[#005ea3]/[0.06] transition-colors text-[11px] font-bold uppercase tracking-widest rounded-md"
+                      className="flex-1 flex items-center justify-center gap-1.5 py-2 border border-[#3a9295]/15 dark:border-gray-700 text-[#3a9295] dark:text-[#c8e6e2] hover:bg-[#3a9295]/[0.06] transition-colors text-[11px] font-bold uppercase tracking-widest rounded-md"
                     >
                       <Edit className="h-3.5 w-3.5" />
                       Edit
@@ -523,8 +523,8 @@ export default function ShiftsPage() {
                   </div>
 
                   {/* stats strip */}
-                  <div className="grid grid-cols-2 rounded-lg bg-[#005ea3]/[0.04] dark:bg-white/5 border border-[#005ea3]/[0.06] dark:border-white/5 p-3 mb-4">
-                    <div className="text-center border-r border-[#005ea3]/[0.06] dark:border-white/5">
+                  <div className="grid grid-cols-2 rounded-lg bg-[#3a9295]/[0.04] dark:bg-white/5 border border-[#3a9295]/[0.06] dark:border-white/5 p-3 mb-4">
+                    <div className="text-center border-r border-[#3a9295]/[0.06] dark:border-white/5">
                       <p className="text-[9px] font-bold uppercase tracking-[0.06em] text-[#707783] dark:text-gray-400 mb-0.5">Hours</p>
                       <p className="font-mono text-base font-semibold text-[#1b1c1c] dark:text-white">{shift.totalHours}h</p>
                     </div>
@@ -551,7 +551,7 @@ export default function ShiftsPage() {
                   <div className="flex gap-2">
                     <button
                       onClick={() => openEdit(shift)}
-                      className="flex-1 flex items-center justify-center gap-1.5 py-2 border border-[#005ea3]/15 dark:border-gray-700 text-[#005ea3] dark:text-[#a0c9ff] hover:bg-[#005ea3]/[0.06] transition-colors text-[11px] font-bold uppercase tracking-widest rounded-md"
+                      className="flex-1 flex items-center justify-center gap-1.5 py-2 border border-[#3a9295]/15 dark:border-gray-700 text-[#3a9295] dark:text-[#c8e6e2] hover:bg-[#3a9295]/[0.06] transition-colors text-[11px] font-bold uppercase tracking-widest rounded-md"
                     >
                       <Edit className="h-3.5 w-3.5" />
                       Edit
@@ -653,7 +653,7 @@ export default function ShiftsPage() {
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className={labelCls}>Total Hours (auto)</label>
-              <div className={`${inputCls} font-mono bg-gray-100 dark:bg-gray-800/60 text-[#005ea3] dark:text-[#a0c9ff]`}>
+              <div className={`${inputCls} font-mono bg-gray-100 dark:bg-gray-800/60 text-[#3a9295] dark:text-[#c8e6e2]`}>
                 {formHours}h
               </div>
             </div>
@@ -698,7 +698,7 @@ export default function ShiftsPage() {
                   onClick={() => setForm({ ...form, color: c })}
                   aria-label={`Colour ${c}`}
                   className={`w-8 h-8 rounded-full transition-transform ${
-                    form.color === c ? 'ring-2 ring-offset-2 ring-[#005ea3] scale-110 dark:ring-offset-[#1f2937]' : 'hover:scale-105'
+                    form.color === c ? 'ring-2 ring-offset-2 ring-[#3a9295] scale-110 dark:ring-offset-[#1f2937]' : 'hover:scale-105'
                   }`}
                   style={{ background: c }}
                 />
@@ -773,7 +773,7 @@ export default function ShiftsPage() {
           <div>
             <label className={labelCls}>Currency</label>
             <div className={`${inputCls} flex items-center justify-between bg-gray-100 dark:bg-gray-800/60 cursor-not-allowed`}>
-              <span className="font-mono text-[#005ea3] dark:text-[#a0c9ff]">
+              <span className="font-mono text-[#3a9295] dark:text-[#c8e6e2]">
                 {globalCurrency} ({currencySymbol(globalCurrency).trim()})
               </span>
               <span className="text-[10px] font-bold uppercase tracking-widest text-gray-400">
@@ -804,7 +804,7 @@ export default function ShiftsPage() {
           </div>
 
           {/* Live per-day pay = hourly rate × the shift's hours. */}
-          <div className="rounded-lg bg-[#005ea3]/[0.05] dark:bg-white/5 border border-[#005ea3]/[0.08] dark:border-white/10 p-4 flex items-center justify-between">
+          <div className="rounded-lg bg-[#3a9295]/[0.05] dark:bg-white/5 border border-[#3a9295]/[0.08] dark:border-white/10 p-4 flex items-center justify-between">
             <div>
               <p className="text-[10px] font-bold uppercase tracking-widest text-[#707783] dark:text-gray-400">
                 Per-day Salary
@@ -813,7 +813,7 @@ export default function ShiftsPage() {
                 {wageShift ? `${wageShift.totalHours ?? 0}h × ${currencySymbol(globalCurrency)}${wageValue || 0}/hr` : 'Pick a shift'}
               </p>
             </div>
-            <span className="font-mono text-xl font-semibold text-[#005ea3] dark:text-[#a0c9ff]">
+            <span className="font-mono text-xl font-semibold text-[#3a9295] dark:text-[#c8e6e2]">
               {wagePerDay == null
                 ? '—'
                 : `${currencySymbol(globalCurrency)}${(Math.round(wagePerDay * 100) / 100).toLocaleString()}`}

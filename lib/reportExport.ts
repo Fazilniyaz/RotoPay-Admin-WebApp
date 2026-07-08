@@ -93,7 +93,7 @@ async function toPDF(d: ReportData) {
   const autoTable = (await import('jspdf-autotable')).default;
 
   const doc = new JsPDF();
-  const brand: [number, number, number] = [0, 94, 163];
+  const brand: [number, number, number] = [58,146,149];
 
   doc.setFontSize(18);
   doc.setTextColor(...brand);

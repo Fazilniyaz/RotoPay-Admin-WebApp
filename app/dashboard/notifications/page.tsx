@@ -20,12 +20,12 @@ import {
 import { notificationsStore } from '@/store/notificationsStore';
 import { timeAgo } from '@/lib/format';
 
-const GRADIENT = 'linear-gradient(135deg, #005ea3 0%, #006d30 100%)';
+const GRADIENT = 'linear-gradient(135deg, #3a9295 0%, #105f68 100%)';
 const cardCls =
-  'bg-white dark:bg-[#1f2937] rounded-[10px] border border-[rgba(0,94,163,0.08)] dark:border-[rgba(160,201,255,0.08)] shadow-[0_4px_6px_rgba(0,123,210,0.06),0_2px_4px_rgba(0,123,210,0.04)]';
+  'bg-white dark:bg-[#1f2937] rounded-[10px] border border-[rgba(58,146,149,0.08)] dark:border-[rgba(200,230,226,0.08)] shadow-[0_4px_6px_rgba(99,193,187,0.06),0_2px_4px_rgba(99,193,187,0.04)]';
 
-const GREEN = 'linear-gradient(135deg, #006d30 0%, #37D36B 100%)';
-const BLUE = 'linear-gradient(135deg, #005ea3 0%, #007BD2 100%)';
+const GREEN = 'linear-gradient(135deg, #105f68 0%, #3A9295 100%)';
+const BLUE = 'linear-gradient(135deg, #3a9295 0%, #63C1BB 100%)';
 const GRAY = 'linear-gradient(135deg, #64748b 0%, #94a3b8 100%)';
 const RED = 'linear-gradient(135deg, #b91c1c 0%, #ef4444 100%)';
 
@@ -65,7 +65,7 @@ export default function NotificationsPage() {
         {/* Header */}
         <div className="flex items-end justify-between gap-3 flex-wrap">
           <div>
-            <h1 className="text-3xl font-extrabold text-[#005ea3]">Notifications</h1>
+            <h1 className="text-3xl font-extrabold text-[#3a9295]">Notifications</h1>
             <p className="text-sm text-gray-400 mt-0.5">
               {unread > 0 ? `${unread} unread notification${unread !== 1 ? 's' : ''}` : 'All caught up!'}
             </p>
@@ -73,7 +73,7 @@ export default function NotificationsPage() {
           {unread > 0 && (
             <button
               onClick={markAllRead}
-              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg text-[11px] font-bold uppercase tracking-widest text-[#005ea3] border border-[#005ea3]/20 hover:bg-[#005ea3]/[0.06] transition-colors"
+              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg text-[11px] font-bold uppercase tracking-widest text-[#3a9295] border border-[#3a9295]/20 hover:bg-[#3a9295]/[0.06] transition-colors"
             >
               <Check className="h-4 w-4" />
               Mark all read
@@ -102,8 +102,8 @@ export default function NotificationsPage() {
                 <div
                   key={n.id}
                   onClick={() => toggleRead(n)}
-                  className={`${cardCls} p-4 flex items-start gap-3 cursor-pointer transition-all hover:shadow-[0_10px_24px_rgba(0,94,163,0.12)] ${
-                    !n.isRead ? 'border-l-[3px] border-l-[#005ea3]' : ''
+                  className={`${cardCls} p-4 flex items-start gap-3 cursor-pointer transition-all hover:shadow-[0_10px_24px_rgba(58,146,149,0.12)] ${
+                    !n.isRead ? 'border-l-[3px] border-l-[#3a9295]' : ''
                   }`}
                 >
                   <div
@@ -115,7 +115,7 @@ export default function NotificationsPage() {
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2">
                       <h3 className="font-bold text-sm text-[#1b1c1c] dark:text-white">{n.title}</h3>
-                      {!n.isRead && <span className="w-2 h-2 rounded-full bg-[#005ea3] flex-shrink-0" />}
+                      {!n.isRead && <span className="w-2 h-2 rounded-full bg-[#3a9295] flex-shrink-0" />}
                     </div>
                     <p className="text-sm text-[#404752] dark:text-gray-300 mt-0.5">{n.message}</p>
                     <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mt-1.5">

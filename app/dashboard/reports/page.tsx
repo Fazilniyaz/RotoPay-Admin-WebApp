@@ -32,11 +32,11 @@ import { exportReport, ReportFormat } from '@/lib/reportExport';
 // A worked occurrence = a shift preset assigned to a day (with its hours + wage).
 interface Occurrence { date: Date; hours: number; earned: number; }
 
-const GRADIENT = 'linear-gradient(135deg, #005ea3 0%, #006d30 100%)';
+const GRADIENT = 'linear-gradient(135deg, #3a9295 0%, #105f68 100%)';
 const primaryStyle = { background: GRADIENT };
-const BAR_GRADIENT = 'linear-gradient(to top, #005ea3 0%, #37D36B 100%)';
+const BAR_GRADIENT = 'linear-gradient(to top, #3a9295 0%, #3A9295 100%)';
 const cardCls =
-  'bg-white dark:bg-[#1f2937] rounded-[10px] border border-[rgba(0,94,163,0.08)] dark:border-[rgba(160,201,255,0.08)] shadow-[0_4px_6px_rgba(0,123,210,0.06),0_2px_4px_rgba(0,123,210,0.04)]';
+  'bg-white dark:bg-[#1f2937] rounded-[10px] border border-[rgba(58,146,149,0.08)] dark:border-[rgba(200,230,226,0.08)] shadow-[0_4px_6px_rgba(99,193,187,0.06),0_2px_4px_rgba(99,193,187,0.04)]';
 
 type TabValue = 'weekly' | 'monthly' | 'yearly';
 
@@ -124,7 +124,7 @@ function TrendBadge({ pct, neutral }: { pct: number; neutral?: boolean }) {
     );
   const up = pct > 0;
   return (
-    <span className={`inline-flex items-center gap-0.5 text-[11px] font-bold ${up ? 'text-[#006d30]' : 'text-[#ba1a1a]'}`}>
+    <span className={`inline-flex items-center gap-0.5 text-[11px] font-bold ${up ? 'text-[#105f68]' : 'text-[#ba1a1a]'}`}>
       {up ? <TrendingUp className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />}
       {Math.abs(pct)}%
     </span>
@@ -151,7 +151,7 @@ function StatCard({
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0">
           <p className="text-[10px] font-bold uppercase tracking-[0.07em] text-[#707783] dark:text-gray-400 mb-1.5">{label}</p>
-          <p className="font-mono text-2xl font-medium text-[#005ea3] dark:text-[#a0c9ff] truncate">{value}</p>
+          <p className="font-mono text-2xl font-medium text-[#3a9295] dark:text-[#c8e6e2] truncate">{value}</p>
         </div>
         <div className="w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 shadow-sm" style={primaryStyle}>
           <Icon className="h-5 w-5 text-white" strokeWidth={2} />
@@ -172,7 +172,7 @@ function BarChart({ bars }: { bars: { label: string; pct: number; value: string;
     <div className="flex items-end justify-between gap-2 sm:gap-3 h-52 pt-8 relative">
       <div className="absolute inset-x-0 top-0 bottom-6 flex flex-col justify-between pointer-events-none">
         {[0, 1, 2, 3].map((i) => (
-          <div key={i} className="border-b border-[#005ea3]/[0.06] dark:border-white/5 w-full" />
+          <div key={i} className="border-b border-[#3a9295]/[0.06] dark:border-white/5 w-full" />
         ))}
       </div>
       {bars.map(({ label, pct, value, dim }) => (
@@ -195,12 +195,12 @@ function BarChart({ bars }: { bars: { label: string; pct: number; value: string;
 
 function DataRows({ rows }: { rows: { label: string; hours: number; earnings: number }[] }) {
   return (
-    <div className="divide-y divide-[#005ea3]/[0.06] dark:divide-white/5">
+    <div className="divide-y divide-[#3a9295]/[0.06] dark:divide-white/5">
       {rows.map((r) => (
         <div key={r.label} className="flex items-center justify-between py-2.5">
           <span className="text-sm font-medium text-[#1b1c1c] dark:text-white w-20">{r.label}</span>
           <span className="text-sm font-mono text-[#707783] dark:text-gray-400">{r.hours}h</span>
-          <span className={`text-sm font-mono font-bold ${r.earnings > 0 ? 'text-[#005ea3] dark:text-[#a0c9ff]' : 'text-gray-300 dark:text-gray-600'}`}>
+          <span className={`text-sm font-mono font-bold ${r.earnings > 0 ? 'text-[#3a9295] dark:text-[#c8e6e2]' : 'text-gray-300 dark:text-gray-600'}`}>
             {money(r.earnings)}
           </span>
         </div>
@@ -247,7 +247,7 @@ function WeeklyContent({ data, prevWeek }: { data: DayDatum[]; prevWeek: DayDatu
         </div>
       </div>
 
-      <div className={`${cardCls} p-5 border-l-[3px] border-l-[#006d30]`}>
+      <div className={`${cardCls} p-5 border-l-[3px] border-l-[#105f68]`}>
         <div className="flex items-start gap-3">
           <div className="p-2.5 rounded-lg flex-shrink-0" style={primaryStyle}>
             <Sparkles className="h-5 w-5 text-white" />
@@ -258,11 +258,11 @@ function WeeklyContent({ data, prevWeek }: { data: DayDatum[]; prevWeek: DayDatu
               {totalEarnings > 0 ? (
                 <>
                   Your best day this week was{' '}
-                  <span className="font-mono font-bold text-[#005ea3] dark:text-[#a0c9ff]">{best.day}</span>, earning{' '}
-                  <span className="font-mono font-bold text-[#005ea3] dark:text-[#a0c9ff]">{money(best.earnings)}</span> across{' '}
-                  <span className="font-mono font-bold text-[#005ea3] dark:text-[#a0c9ff]">{best.hours}h</span>. You&apos;re{' '}
+                  <span className="font-mono font-bold text-[#3a9295] dark:text-[#c8e6e2]">{best.day}</span>, earning{' '}
+                  <span className="font-mono font-bold text-[#3a9295] dark:text-[#c8e6e2]">{money(best.earnings)}</span> across{' '}
+                  <span className="font-mono font-bold text-[#3a9295] dark:text-[#c8e6e2]">{best.hours}h</span>. You&apos;re{' '}
                   {pctChange(totalEarnings, prevEarnings) >= 0 ? 'up' : 'down'}{' '}
-                  <span className="font-mono font-bold text-[#005ea3] dark:text-[#a0c9ff]">{Math.abs(pctChange(totalEarnings, prevEarnings))}%</span> versus last week.
+                  <span className="font-mono font-bold text-[#3a9295] dark:text-[#c8e6e2]">{Math.abs(pctChange(totalEarnings, prevEarnings))}%</span> versus last week.
                 </>
               ) : (
                 <>No earnings recorded this week yet. Add shifts and wages to see insights here.</>
@@ -420,7 +420,7 @@ export default function ReportsPage() {
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
           <div>
-            <h1 className="text-3xl font-extrabold text-[#005ea3]">Reports</h1>
+            <h1 className="text-3xl font-extrabold text-[#3a9295]">Reports</h1>
             <p className="text-sm text-gray-400 mt-0.5">
               Analyse your earnings and work patterns · export covers the last{' '}
               {reportMonths} month{reportMonths > 1 ? 's' : ''}
@@ -430,7 +430,7 @@ export default function ReportsPage() {
             <button
               onClick={() => setMenuOpen((o) => !o)}
               disabled={exporting !== null}
-              className="inline-flex items-center justify-center gap-2 px-5 py-3 text-white text-[11px] font-bold uppercase tracking-widest rounded-lg shadow-[0_4px_14px_rgba(0,94,163,0.25)] hover:-translate-y-0.5 transition-all disabled:opacity-60 disabled:hover:translate-y-0"
+              className="inline-flex items-center justify-center gap-2 px-5 py-3 text-white text-[11px] font-bold uppercase tracking-widest rounded-lg shadow-[0_4px_14px_rgba(58,146,149,0.25)] hover:-translate-y-0.5 transition-all disabled:opacity-60 disabled:hover:translate-y-0"
               style={primaryStyle}
             >
               {exporting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
@@ -447,9 +447,9 @@ export default function ReportsPage() {
                       <button
                         key={f.value}
                         onClick={() => handleExport(f.value)}
-                        className="w-full flex items-center gap-3 px-3 py-2.5 rounded-md text-sm text-[#1b1c1c] dark:text-gray-200 hover:bg-[#005ea3]/[0.06] transition-colors"
+                        className="w-full flex items-center gap-3 px-3 py-2.5 rounded-md text-sm text-[#1b1c1c] dark:text-gray-200 hover:bg-[#3a9295]/[0.06] transition-colors"
                       >
-                        <Icon className="h-4 w-4 text-[#005ea3]" />
+                        <Icon className="h-4 w-4 text-[#3a9295]" />
                         {f.label}
                       </button>
                     );

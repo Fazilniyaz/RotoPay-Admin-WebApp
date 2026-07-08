@@ -22,8 +22,8 @@ function calcStrength(p: string) {
 function strengthMeta(score: number): { label: string; color: string } {
   if (score <= 25) return { label: 'Weak', color: '#ba1a1a' };
   if (score <= 50) return { label: 'Fair', color: '#ff8c00' };
-  if (score <= 75) return { label: 'Good', color: '#005ea3' };
-  return { label: 'Strong', color: '#006d30' };
+  if (score <= 75) return { label: 'Good', color: '#3a9295' };
+  return { label: 'Strong', color: '#105f68' };
 }
 
 /* ─────────────────────────────────────────────
@@ -34,8 +34,8 @@ const styles = `
 
   /* ── Tokens ── */
   .rp-rp-root {
-    --rp-primary:           #005ea3;
-    --rp-secondary:         #006d30;
+    --rp-primary:           #3a9295;
+    --rp-secondary:         #105f68;
     --rp-error:             #ba1a1a;
     --rp-surface:           #fbf9f8;
     --rp-surface-container: #efeded;
@@ -46,8 +46,8 @@ const styles = `
     --rp-on-surface-var:    #404752;
     --rp-outline:           #707783;
     --rp-outline-var:       #c0c7d4;
-    --rp-gradient:          linear-gradient(135deg, #005ea3 0%, #006d30 100%);
-    --rp-success:           #006d30;
+    --rp-gradient:          linear-gradient(135deg, #3a9295 0%, #105f68 100%);
+    --rp-success:           #105f68;
   }
 
   .dark .rp-rp-root,
@@ -61,9 +61,9 @@ const styles = `
     --rp-on-surface-var:    #c4c6d0;
     --rp-outline:           #8d9199;
     --rp-outline-var:       #44474f;
-    --rp-primary:           #a0c9ff;
-    --rp-secondary:         #6aff90;
-    --rp-success:           #6aff90;
+    --rp-primary:           #c8e6e2;
+    --rp-secondary:         #9ed5d1;
+    --rp-success:           #9ed5d1;
   }
 
   /* ── Base ── */
@@ -100,7 +100,7 @@ const styles = `
     display: flex;
     align-items: center;
     justify-content: center;
-    box-shadow: 0 8px 24px rgba(0, 94, 163, 0.28);
+    box-shadow: 0 8px 24px rgba(58,146,149, 0.28);
     margin-bottom: 10px;
     color: #fff;
     font-size: 32px;
@@ -123,7 +123,7 @@ const styles = `
     border: 1.5px solid var(--rp-outline-var);
     border-radius: 16px;
     padding: 32px 28px 24px;
-    box-shadow: 0 8px 32px rgba(0, 123, 210, 0.10);
+    box-shadow: 0 8px 32px rgba(99,193,187, 0.10);
     animation: rp-slide-up 0.5s ease-out forwards;
     transition: border-color 0.4s, box-shadow 0.4s;
     overflow: hidden;
@@ -135,8 +135,8 @@ const styles = `
   }
 
   .rp-card.rp-card--success {
-    border-color: rgba(0, 109, 48, 0.4);
-    box-shadow: 0 8px 32px rgba(0, 109, 48, 0.15);
+    border-color: rgba(16,95,104, 0.4);
+    box-shadow: 0 8px 32px rgba(16,95,104, 0.15);
   }
 
   /* ── Card header ── */
@@ -211,11 +211,11 @@ const styles = `
 
   .rp-input:focus {
     border-color: var(--rp-primary);
-    box-shadow: 0 0 0 4px rgba(0, 94, 163, 0.10);
+    box-shadow: 0 0 0 4px rgba(58,146,149, 0.10);
   }
 
   .dark .rp-input:focus {
-    box-shadow: 0 0 0 4px rgba(160, 201, 255, 0.13);
+    box-shadow: 0 0 0 4px rgba(200,230,226, 0.13);
   }
 
   .rp-input::placeholder {
@@ -335,7 +335,7 @@ const styles = `
     align-items: center;
     justify-content: center;
     gap: 8px;
-    box-shadow: 0 4px 16px rgba(0, 94, 163, 0.24);
+    box-shadow: 0 4px 16px rgba(58,146,149, 0.24);
     transition: transform 0.2s, box-shadow 0.2s, opacity 0.2s;
     margin-top: 8px;
     margin-bottom: 20px;
@@ -343,7 +343,7 @@ const styles = `
 
   .rp-btn:hover:not(:disabled) {
     transform: scale(1.02);
-    box-shadow: 0 6px 22px rgba(0, 94, 163, 0.32);
+    box-shadow: 0 6px 22px rgba(58,146,149, 0.32);
   }
 
   .rp-btn:active:not(:disabled) { transform: scale(0.98); }
@@ -441,7 +441,7 @@ const styles = `
     font-family: 'Montserrat', sans-serif;
     cursor: pointer;
     text-decoration: none;
-    box-shadow: 0 4px 16px rgba(0, 94, 163, 0.22);
+    box-shadow: 0 4px 16px rgba(58,146,149, 0.22);
     transition: opacity 0.2s, transform 0.2s;
   }
 

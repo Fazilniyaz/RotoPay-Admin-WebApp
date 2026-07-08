@@ -57,19 +57,19 @@ export default function Page() {
         }
         .rp-ring-1 {
           width: 220px; height: 220px;
-          border-color: #1d4ed8;
+          border-color: #105f68;
           opacity: 0;
           animation-delay: 0.4s;
         }
         .rp-ring-2 {
           width: 340px; height: 340px;
-          border-color: #0d9488;
+          border-color: #3a9295;
           opacity: 0;
           animation-delay: 0.7s;
         }
         .rp-ring-3 {
           width: 460px; height: 460px;
-          border-color: #1d4ed8;
+          border-color: #105f68;
           opacity: 0;
           animation-delay: 1s;
         }
@@ -186,11 +186,11 @@ export default function Page() {
           width: 6px;
           height: 6px;
           border-radius: 50%;
-          background: #1d4ed8;
+          background: #105f68;
           animation: rp-dot-bounce 1.2s ease-in-out infinite;
         }
         .rp-dot:nth-child(1) { animation-delay: 0s; }
-        .rp-dot:nth-child(2) { animation-delay: 0.18s; background: #0f7c6b; }
+        .rp-dot:nth-child(2) { animation-delay: 0.18s; background: #3a9295; }
         .rp-dot:nth-child(3) { animation-delay: 0.36s; }
         @keyframes rp-dot-bounce {
           0%, 80%, 100% { transform: scale(0.7); opacity: 0.4; }

@@ -25,7 +25,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 
 // Matches the RotaPay native app's bottom-nav accent gradient.
-const GRADIENT = 'linear-gradient(135deg, #007BD2 0%, #37D36B 100%)';
+const GRADIENT = 'linear-gradient(135deg, #63C1BB 0%, #3A9295 100%)';
 
 const mainTabs = [
   { href: '/dashboard', label: 'Home', icon: Home },

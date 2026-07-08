@@ -39,16 +39,16 @@ import { timeAgo, money, fmtDateShort, fmtTime } from '@/lib/format';
 
 // Icon + colours per activity type for the dashboard timeline.
 const ACTIVITY_META: Record<string, { icon: LucideIcon; color: string; bg: string }> = {
-  shift_added: { icon: PlusCircle, color: '#0077cc', bg: 'rgba(0,119,204,0.12)' },
-  shift_updated: { icon: SquarePen, color: '#0077cc', bg: 'rgba(0,119,204,0.12)' },
+  shift_added: { icon: PlusCircle, color: '#63c1bb', bg: 'rgba(0,119,204,0.12)' },
+  shift_updated: { icon: SquarePen, color: '#63c1bb', bg: 'rgba(0,119,204,0.12)' },
   shift_removed: { icon: Trash2, color: '#ba1a1a', bg: 'rgba(186,26,26,0.12)' },
-  shift_reminder: { icon: Clock, color: '#005ea3', bg: 'rgba(0,94,163,0.12)' },
+  shift_reminder: { icon: Clock, color: '#3a9295', bg: 'rgba(58,146,149,0.12)' },
   profile_updated: { icon: UserCog, color: '#888', bg: 'rgba(136,136,136,0.1)' },
-  payment_confirmed: { icon: Wallet, color: '#008557', bg: 'rgba(0,133,87,0.12)' },
-  employee_added: { icon: Building2, color: '#0077cc', bg: 'rgba(0,119,204,0.12)' },
-  wage_added: { icon: Coins, color: '#008557', bg: 'rgba(0,133,87,0.12)' },
-  clock_in: { icon: LogIn, color: '#49e177', bg: 'rgba(73,225,119,0.15)' },
-  clock_out: { icon: LogOut, color: '#49e177', bg: 'rgba(73,225,119,0.15)' },
+  payment_confirmed: { icon: Wallet, color: '#105f68', bg: 'rgba(0,133,87,0.12)' },
+  employee_added: { icon: Building2, color: '#63c1bb', bg: 'rgba(0,119,204,0.12)' },
+  wage_added: { icon: Coins, color: '#105f68', bg: 'rgba(0,133,87,0.12)' },
+  clock_in: { icon: LogIn, color: '#9ed5d1', bg: 'rgba(73,225,119,0.15)' },
+  clock_out: { icon: LogOut, color: '#9ed5d1', bg: 'rgba(73,225,119,0.15)' },
 };
 const activityMeta = (type: string) =>
   ACTIVITY_META[type] ?? { icon: Bell, color: '#888', bg: 'rgba(136,136,136,0.1)' };
@@ -63,7 +63,7 @@ type StatCardData = {
   sub: string;
 };
 
-const DONUT_COLORS = ['#0077cc', '#6aff90', '#008557', '#005ea3', '#37D36B', '#a0c9ff'];
+const DONUT_COLORS = ['#63c1bb', '#9ed5d1', '#105f68', '#3a9295', '#3A9295', '#c8e6e2'];
 const WEEKDAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
 // Total pay attached to a shift (a shift can carry several wage rows).
@@ -142,7 +142,7 @@ function DonutChart({
         }}
       >
         <span style={{ fontSize: 10, fontFamily: 'Montserrat', fontWeight: 700, color: '#404752', letterSpacing: '0.08em', textTransform: 'uppercase' }}>Total</span>
-        <span style={{ fontSize: 16, fontFamily: '"JetBrains Mono", monospace', fontWeight: 500, color: '#005ea3' }}>{centerValue}</span>
+        <span style={{ fontSize: 16, fontFamily: '"JetBrains Mono", monospace', fontWeight: 500, color: '#3a9295' }}>{centerValue}</span>
       </div>
     </div>
   );
@@ -160,7 +160,7 @@ function BarChart({ bars }: { bars: { day: string; amount: number }[] }) {
               style={{
                 width: '60%',
                 height: `${d.amount > 0 ? Math.max(4, (d.amount / max) * 100) : 2}%`,
-                background: 'linear-gradient(180deg, #005ea3 0%, #006d30 100%)',
+                background: 'linear-gradient(180deg, #3a9295 0%, #105f68 100%)',
                 borderRadius: '4px 4px 0 0',
                 transition: 'height 0.4s ease',
                 opacity: d.amount > 0 ? 1 : 0.25,
@@ -193,7 +193,7 @@ function StatCard({ title, value, icon: Icon, change, trend, sub }: StatCardData
         </div>
       </div>
       <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-        {isUp && <TrendingUp size={14} color="#007433" strokeWidth={2.5} />}
+        {isUp && <TrendingUp size={14} color="#105f68" strokeWidth={2.5} />}
         {isDown && <TrendingDown size={14} color="#ba1a1a" strokeWidth={2.5} />}
         {change !== null && (
           <span
@@ -201,7 +201,7 @@ function StatCard({ title, value, icon: Icon, change, trend, sub }: StatCardData
               fontFamily: '"JetBrains Mono", monospace',
               fontSize: 13,
               fontWeight: 500,
-              color: isUp ? '#007433' : isDown ? '#ba1a1a' : '#005ea3',
+              color: isUp ? '#105f68' : isDown ? '#ba1a1a' : '#3a9295',
             }}
           >
             {change}%
@@ -385,7 +385,7 @@ export default function DashboardPage() {
           align-items: center;
           justify-content: center;
           gap: 10px;
-          background: linear-gradient(135deg, #005ea3 0%, #006d30 100%);
+          background: linear-gradient(135deg, #3a9295 0%, #105f68 100%);
           color: white;
           border: none;
           border-radius: 9px;
@@ -396,11 +396,11 @@ export default function DashboardPage() {
           cursor: pointer;
           text-decoration: none;
           transition: transform 0.18s, box-shadow 0.18s;
-          box-shadow: 0 4px 14px rgba(0, 94, 163, 0.25);
+          box-shadow: 0 4px 14px rgba(58,146,149, 0.25);
         }
         .rp-quick-btn:hover {
           transform: translateY(-2px) scale(1.02);
-          box-shadow: 0 8px 20px rgba(0, 94, 163, 0.35);
+          box-shadow: 0 8px 20px rgba(58,146,149, 0.35);
           color: white;
         }
 
@@ -415,19 +415,19 @@ export default function DashboardPage() {
           background: white;
           border-radius: 10px;
           padding: 24px;
-          border: 1px solid rgba(0, 94, 163, 0.08);
-          box-shadow: 0 4px 6px rgba(0, 123, 210, 0.06), 0 2px 4px rgba(0, 123, 210, 0.04);
+          border: 1px solid rgba(58,146,149, 0.08);
+          box-shadow: 0 4px 6px rgba(99,193,187, 0.06), 0 2px 4px rgba(99,193,187, 0.04);
           transition: transform 0.25s, box-shadow 0.25s;
           position: relative;
           overflow: hidden;
         }
         .rp-stat-card:hover {
           transform: translateY(-3px);
-          box-shadow: 0 10px 24px rgba(0, 94, 163, 0.12);
+          box-shadow: 0 10px 24px rgba(58,146,149, 0.12);
         }
         .dark .rp-stat-card {
           background: #1f2937;
-          border-color: rgba(160, 201, 255, 0.08);
+          border-color: rgba(200,230,226, 0.08);
         }
         .rp-stat-label {
           font-size: 11px;
@@ -442,16 +442,16 @@ export default function DashboardPage() {
           font-family: 'JetBrains Mono', monospace;
           font-size: 22px;
           font-weight: 500;
-          color: #005ea3;
+          color: #3a9295;
           margin: 0;
           letter-spacing: -0.01em;
         }
-        .dark .rp-stat-value { color: #a0c9ff; }
+        .dark .rp-stat-value { color: #c8e6e2; }
         .rp-stat-icon {
           width: 40px;
           height: 40px;
           border-radius: 7px;
-          background: linear-gradient(135deg, #005ea3 0%, #006d30 100%);
+          background: linear-gradient(135deg, #3a9295 0%, #105f68 100%);
           display: flex;
           align-items: center;
           justify-content: center;
@@ -471,17 +471,17 @@ export default function DashboardPage() {
           background: white;
           border-radius: 10px;
           padding: 24px;
-          border: 1px solid rgba(0, 94, 163, 0.08);
-          box-shadow: 0 4px 6px rgba(0, 123, 210, 0.06);
+          border: 1px solid rgba(58,146,149, 0.08);
+          box-shadow: 0 4px 6px rgba(99,193,187, 0.06);
           transition: transform 0.25s, box-shadow 0.25s;
         }
         .rp-card:hover {
           transform: translateY(-2px);
-          box-shadow: 0 8px 20px rgba(0, 94, 163, 0.10);
+          box-shadow: 0 8px 20px rgba(58,146,149, 0.10);
         }
         .dark .rp-card {
           background: #1f2937;
-          border-color: rgba(160, 201, 255, 0.08);
+          border-color: rgba(200,230,226, 0.08);
         }
         .rp-card-title {
           font-size: 16px;
@@ -517,7 +517,7 @@ export default function DashboardPage() {
           gap: 16px;
           margin-top: 24px;
           padding-top: 20px;
-          border-top: 1px solid rgba(0, 94, 163, 0.08);
+          border-top: 1px solid rgba(58,146,149, 0.08);
         }
         .rp-chart-footer-label {
           font-size: 11px;
@@ -587,7 +587,7 @@ export default function DashboardPage() {
           font-weight: 700;
           letter-spacing: 0.06em;
           text-transform: uppercase;
-          color: #005ea3;
+          color: #3a9295;
           text-decoration: none;
           display: flex;
           align-items: center;
@@ -603,14 +603,14 @@ export default function DashboardPage() {
           color: #707783;
           padding: 0 0 12px;
           text-align: left;
-          border-bottom: 1px solid rgba(0, 94, 163, 0.08);
+          border-bottom: 1px solid rgba(58,146,149, 0.08);
         }
         .rp-table th:last-child { text-align: right; }
         .rp-table td {
           padding: 14px 0;
           font-size: 14px;
           color: #1b1c1c;
-          border-bottom: 1px solid rgba(0, 94, 163, 0.06);
+          border-bottom: 1px solid rgba(58,146,149, 0.06);
         }
         .dark .rp-table td { color: #f3f4f6; }
         .rp-table tr:last-child td { border-bottom: none; }
@@ -623,7 +623,7 @@ export default function DashboardPage() {
           width: 32px;
           height: 32px;
           border-radius: 6px;
-          background: rgba(0, 94, 163, 0.07);
+          background: rgba(58,146,149, 0.07);
           display: flex;
           align-items: center;
           justify-content: center;
@@ -647,14 +647,14 @@ export default function DashboardPage() {
           text-transform: uppercase;
           padding: 5px 12px;
           border-radius: 6px;
-          border: 1px solid rgba(0, 94, 163, 0.15);
+          border: 1px solid rgba(58,146,149, 0.15);
           background: transparent;
-          color: #005ea3;
+          color: #3a9295;
           cursor: pointer;
           transition: background 0.15s, color 0.15s;
         }
         .rp-details-btn:hover {
-          background: #005ea3;
+          background: #3a9295;
           color: white;
         }
 
@@ -673,7 +673,7 @@ export default function DashboardPage() {
           top: 8px;
           bottom: 8px;
           width: 1.5px;
-          background: rgba(0, 94, 163, 0.10);
+          background: rgba(58,146,149, 0.10);
         }
         .rp-timeline-item {
           display: flex;
@@ -717,14 +717,14 @@ export default function DashboardPage() {
           font-weight: 700;
           letter-spacing: 0.07em;
           text-transform: uppercase;
-          color: #005ea3;
+          color: #3a9295;
           border: none;
           background: transparent;
           border-radius: 7px;
           cursor: pointer;
           transition: background 0.15s;
         }
-        .rp-see-all-btn:hover { background: rgba(0, 94, 163, 0.06); }
+        .rp-see-all-btn:hover { background: rgba(58,146,149, 0.06); }
 
         @media (max-width: 1024px) {
           .rp-stats-grid { grid-template-columns: repeat(2, 1fr); }
@@ -771,7 +771,7 @@ export default function DashboardPage() {
               <h4 className="rp-card-title" style={{ margin: 0 }}>This Week&apos;s Earnings</h4>
               <div className="rp-chart-legend">
                 <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                  <div className="rp-legend-dot" style={{ background: '#005ea3' }} />
+                  <div className="rp-legend-dot" style={{ background: '#3a9295' }} />
                   <span className="rp-legend-label">Earnings</span>
                 </div>
               </div>
@@ -780,7 +780,7 @@ export default function DashboardPage() {
             <div className="rp-chart-footer">
               <div>
                 <p className="rp-chart-footer-label">Weekly Total</p>
-                <p className="rp-chart-footer-val" style={{ color: '#005ea3' }}>{money(weekTotal)}</p>
+                <p className="rp-chart-footer-val" style={{ color: '#3a9295' }}>{money(weekTotal)}</p>
               </div>
               <div>
                 <p className="rp-chart-footer-label">This Month</p>
@@ -788,7 +788,7 @@ export default function DashboardPage() {
               </div>
               <div>
                 <p className="rp-chart-footer-label">Hours / Week</p>
-                <p className="rp-chart-footer-val" style={{ color: '#006d30' }}>{Math.round(hoursThisWeek * 10) / 10}h</p>
+                <p className="rp-chart-footer-val" style={{ color: '#105f68' }}>{Math.round(hoursThisWeek * 10) / 10}h</p>
               </div>
             </div>
           </div>
@@ -852,7 +852,7 @@ export default function DashboardPage() {
                         <td>
                           <div className="rp-employer-cell">
                             <div className="rp-employer-icon">
-                              <Briefcase size={15} color="#005ea3" />
+                              <Briefcase size={15} color="#3a9295" />
                             </div>
                             <span className="rp-employer-name">{shift.employer}</span>
                           </div>

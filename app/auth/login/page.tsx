@@ -81,24 +81,24 @@ export default function LoginPage() {
         @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500&display=swap');
 
         .rp {
-          --rp-blue:       #005EA3;
-          --rp-blue-mid:   #007BD2;
-          --rp-green:      #00C281;
-          --rp-grad:       linear-gradient(160deg, #005EA3 0%, #007BD2 40%, #00C281 100%);
-          --rp-btn-grad:   linear-gradient(90deg, #005EA3 0%, #00C281 100%);
+          --rp-blue:       #3A9295;
+          --rp-blue-mid:   #63C1BB;
+          --rp-green:      #63C1BB;
+          --rp-grad:       linear-gradient(160deg, #3A9295 0%, #63C1BB 40%, #63C1BB 100%);
+          --rp-btn-grad:   linear-gradient(90deg, #3A9295 0%, #63C1BB 100%);
           --rp-font:       'Montserrat', sans-serif;
           --rp-mono:       'JetBrains Mono', monospace;
           --rp-bg:         #F7F9FC;
           --rp-input-bg:   #ffffff;
           --rp-border:     #C0C7D4;
-          --rp-border-foc: #005EA3;
+          --rp-border-foc: #3A9295;
           --rp-text:       #1B1C1C;
           --rp-muted:      #404752;
           --rp-subtle:     #707783;
           --rp-divider:    #E4E2E2;
           --rp-shadow:     0 1px 3px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.04);
-          --rp-shadow-lg:  0 4px 12px -2px rgba(0,123,210,0.28);
-          --rp-focus-ring: rgba(0,94,163,0.18);
+          --rp-shadow-lg:  0 4px 12px -2px rgba(99,193,187,0.28);
+          --rp-focus-ring: rgba(58,146,149,0.18);
         }
 
         html.dark .rp,
@@ -107,14 +107,14 @@ export default function LoginPage() {
           --rp-bg:         #0F1117;
           --rp-input-bg:   #1E2130;
           --rp-border:     #2E3348;
-          --rp-border-foc: #007BD2;
+          --rp-border-foc: #63C1BB;
           --rp-text:       #E8EAF0;
           --rp-muted:      #9BA3BA;
           --rp-subtle:     #6B748A;
           --rp-divider:    #252839;
           --rp-shadow:     0 1px 3px rgba(0,0,0,0.35);
-          --rp-shadow-lg:  0 4px 16px -2px rgba(0,123,210,0.35);
-          --rp-focus-ring: rgba(0,123,210,0.25);
+          --rp-shadow-lg:  0 4px 16px -2px rgba(99,193,187,0.35);
+          --rp-focus-ring: rgba(99,193,187,0.25);
         }
 
         .rp * { font-family: var(--rp-font); box-sizing: border-box; }

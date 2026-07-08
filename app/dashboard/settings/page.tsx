@@ -30,13 +30,13 @@ const fileToDataUrl = (file: File) =>
     reader.readAsDataURL(file);
   });
 
-const GRADIENT = 'linear-gradient(135deg, #005ea3 0%, #006d30 100%)';
+const GRADIENT = 'linear-gradient(135deg, #3a9295 0%, #105f68 100%)';
 const primaryStyle = { background: GRADIENT };
 const cardCls =
-  'bg-white dark:bg-[#1f2937] rounded-[10px] border border-[rgba(0,94,163,0.08)] dark:border-[rgba(160,201,255,0.08)] shadow-[0_4px_6px_rgba(0,123,210,0.06),0_2px_4px_rgba(0,123,210,0.04)]';
+  'bg-white dark:bg-[#1f2937] rounded-[10px] border border-[rgba(58,146,149,0.08)] dark:border-[rgba(200,230,226,0.08)] shadow-[0_4px_6px_rgba(99,193,187,0.06),0_2px_4px_rgba(99,193,187,0.04)]';
 const labelCls = 'block text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2';
 const inputCls =
-  'w-full bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-md px-4 py-3 focus:border-[#005ea3] focus:ring-2 focus:ring-[#005ea3]/10 outline-none transition-all text-sm';
+  'w-full bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-md px-4 py-3 focus:border-[#3a9295] focus:ring-2 focus:ring-[#3a9295]/10 outline-none transition-all text-sm';
 
 const DATE_FORMATS: DateFormat[] = ['DD/MM/YYYY', 'MM/DD/YYYY', 'YYYY-MM-DD'];
 const TIME_FORMATS: TimeFormat[] = ['24h', '12h'];
@@ -274,7 +274,7 @@ export default function SettingsPage() {
     <DashboardLayout>
       <div className="space-y-6 max-w-3xl">
         <div>
-          <h1 className="text-3xl font-extrabold text-[#005ea3]">Settings</h1>
+          <h1 className="text-3xl font-extrabold text-[#3a9295]">Settings</h1>
           <p className="text-sm text-gray-400 mt-0.5">Your profile and global preferences</p>
         </div>
 
@@ -315,7 +315,7 @@ export default function SettingsPage() {
                     <button
                       type="button"
                       onClick={() => fileInputRef.current?.click()}
-                      className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-[11px] font-bold uppercase tracking-widest text-[#005ea3] border border-[#005ea3]/20 hover:bg-[#005ea3]/[0.06] transition-colors"
+                      className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-[11px] font-bold uppercase tracking-widest text-[#3a9295] border border-[#3a9295]/20 hover:bg-[#3a9295]/[0.06] transition-colors"
                     >
                       <Camera className="h-3.5 w-3.5" />
                       {currentPhoto ? 'Change photo' : 'Upload photo'}
@@ -466,9 +466,9 @@ export default function SettingsPage() {
               </div>
 
               {/* Currency comparison preview (global → native, live rate) */}
-              <div className="mt-5 rounded-md bg-[#005ea3]/[0.04] dark:bg-white/5 border border-[#005ea3]/[0.06] dark:border-white/5 p-4">
+              <div className="mt-5 rounded-md bg-[#3a9295]/[0.04] dark:bg-white/5 border border-[#3a9295]/[0.06] dark:border-white/5 p-4">
                 <div className="flex items-center gap-2 mb-3">
-                  <Timer className="h-3.5 w-3.5 text-[#005ea3] dark:text-[#a0c9ff]" />
+                  <Timer className="h-3.5 w-3.5 text-[#3a9295] dark:text-[#c8e6e2]" />
                   <p className="text-[10px] font-bold uppercase tracking-widest text-[#707783] dark:text-gray-400">
                     Currency Comparison
                   </p>
@@ -488,7 +488,7 @@ export default function SettingsPage() {
                     <div className="flex items-center gap-2 font-mono text-sm text-[#1b1c1c] dark:text-white">
                       <span className="font-semibold">1 {currency}</span>
                       <ArrowRight className="h-4 w-4 text-gray-400" />
-                      <span className="font-semibold text-[#005ea3] dark:text-[#a0c9ff]">
+                      <span className="font-semibold text-[#3a9295] dark:text-[#c8e6e2]">
                         {rate.toFixed(2)} {nativeCurrency}
                       </span>
                     </div>
@@ -502,7 +502,7 @@ export default function SettingsPage() {
               </div>
 
               {/* Live preview */}
-              <div className="mt-5 rounded-md bg-[#005ea3]/[0.04] dark:bg-white/5 border border-[#005ea3]/[0.06] dark:border-white/5 p-4">
+              <div className="mt-5 rounded-md bg-[#3a9295]/[0.04] dark:bg-white/5 border border-[#3a9295]/[0.06] dark:border-white/5 p-4">
                 <p className="text-[10px] font-bold uppercase tracking-widest text-[#707783] dark:text-gray-400 mb-2">
                   Preview
                 </p>
@@ -535,7 +535,7 @@ export default function SettingsPage() {
               <button
                 onClick={save}
                 disabled={saving || !dirty}
-                className="inline-flex items-center justify-center gap-2 px-8 py-3 text-white text-[11px] font-bold uppercase tracking-widest rounded-lg shadow-[0_4px_14px_rgba(0,94,163,0.25)] hover:-translate-y-0.5 transition-all disabled:opacity-60 disabled:hover:translate-y-0 disabled:cursor-not-allowed"
+                className="inline-flex items-center justify-center gap-2 px-8 py-3 text-white text-[11px] font-bold uppercase tracking-widest rounded-lg shadow-[0_4px_14px_rgba(58,146,149,0.25)] hover:-translate-y-0.5 transition-all disabled:opacity-60 disabled:hover:translate-y-0 disabled:cursor-not-allowed"
                 style={primaryStyle}
               >
                 <Check className="h-4 w-4" />
