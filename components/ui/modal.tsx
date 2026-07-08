@@ -50,7 +50,7 @@ export function Modal({
         className={`relative w-full ${maxWidth} max-h-[90vh] flex flex-col bg-white dark:bg-[#1f2937] rounded-[10px] shadow-2xl border border-gray-200 dark:border-gray-700 animate-count-up`}
       >
         <div className="flex items-center justify-between px-6 py-5 border-b border-gray-100 dark:border-gray-700">
-          <h2 className="text-lg font-bold text-[#02457a]">{title}</h2>
+          <h2 className="text-lg font-bold text-[#2563eb]">{title}</h2>
           <button
             onClick={onClose}
             aria-label="Close"

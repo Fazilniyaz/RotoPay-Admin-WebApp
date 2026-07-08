@@ -29,13 +29,13 @@ import { money, currencySymbol, fmtTime } from '@/lib/format';
 
 const labelCls = 'block text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2';
 const inputCls =
-  'w-full bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-md px-4 py-3 focus:border-[#02457a] focus:ring-2 focus:ring-[#02457a]/10 outline-none transition-all text-sm';
+  'w-full bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-md px-4 py-3 focus:border-[#2563eb] focus:ring-2 focus:ring-[#2563eb]/10 outline-none transition-all text-sm';
 const primaryBtn =
-  'flex items-center justify-center gap-2 px-5 py-3 text-white text-[11px] font-bold uppercase tracking-widest rounded-lg shadow-[0_4px_14px_rgba(2,69,122,0.25)] hover:-translate-y-0.5 hover:shadow-[0_8px_20px_rgba(2,69,122,0.35)] transition-all disabled:opacity-60 disabled:hover:translate-y-0';
-const GRADIENT = 'linear-gradient(135deg, #02457a 0%, #001b48 100%)';
+  'flex items-center justify-center gap-2 px-5 py-3 text-white text-[11px] font-bold uppercase tracking-widest rounded-lg shadow-[0_4px_14px_rgba(37,99,235,0.25)] hover:-translate-y-0.5 hover:shadow-[0_8px_20px_rgba(37,99,235,0.35)] transition-all disabled:opacity-60 disabled:hover:translate-y-0';
+const GRADIENT = 'linear-gradient(135deg, #2563eb 0%, #06b6d4 100%)';
 const primaryStyle = { background: GRADIENT };
 const cardCls =
-  'bg-white dark:bg-[#1f2937] rounded-[10px] border border-[rgba(2,69,122,0.08)] dark:border-[rgba(214,232,238,0.08)] shadow-[0_4px_6px_rgba(1,138,190,0.06),0_2px_4px_rgba(1,138,190,0.04)] hover:shadow-[0_10px_24px_rgba(2,69,122,0.12)] hover:-translate-y-1 transition-all duration-300';
+  'bg-white dark:bg-[#1f2937] rounded-[10px] border border-[rgba(37,99,235,0.08)] dark:border-[rgba(219,234,254,0.08)] shadow-[0_4px_6px_rgba(6,182,212,0.06),0_2px_4px_rgba(6,182,212,0.04)] hover:shadow-[0_10px_24px_rgba(37,99,235,0.12)] hover:-translate-y-1 transition-all duration-300';
 
 const FILTERS: Array<{ value: 'all' | 'active' | 'inactive'; label: string }> = [
   { value: 'all', label: 'All' },
@@ -221,7 +221,7 @@ export default function EmployersPage() {
         {/* Header */}
         <div className="flex items-end justify-between">
           <div>
-            <h1 className="text-3xl font-extrabold text-[#02457a]">Employers</h1>
+            <h1 className="text-3xl font-extrabold text-[#2563eb]">Employers</h1>
             <p className="text-sm text-gray-400 mt-0.5">
               Manage employers and view their shifts · {employers.length}/{MAX_EMPLOYERS} added
             </p>
@@ -276,7 +276,7 @@ export default function EmployersPage() {
 
         {/* Gradient summary */}
         <div
-          className="rounded-[10px] p-5 sm:p-6 grid grid-cols-3 shadow-[0_8px_24px_rgba(2,69,122,0.25)]"
+          className="rounded-[10px] p-5 sm:p-6 grid grid-cols-3 shadow-[0_8px_24px_rgba(37,99,235,0.25)]"
           style={primaryStyle}
         >
           <div className="text-center">
@@ -340,12 +340,12 @@ export default function EmployersPage() {
                           </h3>
                           <span
                             className={`w-2 h-2 rounded-full flex-shrink-0 ${
-                              emp.isActive ? 'bg-[#02457A]' : 'bg-gray-300 dark:bg-gray-600'
+                              emp.isActive ? 'bg-[#2563EB]' : 'bg-gray-300 dark:bg-gray-600'
                             }`}
                           />
                           {emp.id === defaultEmployerId && (
-                            <span className="inline-flex items-center gap-1 text-[9px] font-bold uppercase tracking-widest text-[#001b48] bg-[#001b48]/10 rounded-full px-2 py-0.5 flex-shrink-0">
-                              <Star className="h-2.5 w-2.5 fill-[#001b48]" /> Default
+                            <span className="inline-flex items-center gap-1 text-[9px] font-bold uppercase tracking-widest text-[#1d4ed8] bg-[#1d4ed8]/10 rounded-full px-2 py-0.5 flex-shrink-0">
+                              <Star className="h-2.5 w-2.5 fill-[#1d4ed8]" /> Default
                             </span>
                           )}
                         </div>
@@ -357,14 +357,14 @@ export default function EmployersPage() {
                     </div>
 
                     {/* stats strip */}
-                    <div className="grid grid-cols-2 rounded-lg bg-[#02457a]/[0.04] dark:bg-white/5 border border-[#02457a]/[0.06] dark:border-white/5 p-3 mb-4">
+                    <div className="grid grid-cols-2 rounded-lg bg-[#2563eb]/[0.04] dark:bg-white/5 border border-[#2563eb]/[0.06] dark:border-white/5 p-3 mb-4">
                       <div className="text-center">
                         <p className="text-[9px] font-bold uppercase tracking-[0.06em] text-[#707783] dark:text-gray-400 mb-0.5">Shifts</p>
                         <p className="font-mono text-base font-semibold text-[#1b1c1c] dark:text-white">{shiftCount}</p>
                       </div>
-                      <div className="text-center border-l border-[#02457a]/[0.06] dark:border-white/5">
+                      <div className="text-center border-l border-[#2563eb]/[0.06] dark:border-white/5">
                         <p className="text-[9px] font-bold uppercase tracking-[0.06em] text-[#707783] dark:text-gray-400 mb-0.5">Total Pay</p>
-                        <p className="font-mono text-base font-semibold text-[#02457a] dark:text-[#d6e8ee]">{money(totalPay)}</p>
+                        <p className="font-mono text-base font-semibold text-[#2563eb] dark:text-[#dbeafe]">{money(totalPay)}</p>
                       </div>
                     </div>
 
@@ -385,14 +385,14 @@ export default function EmployersPage() {
                       disabled={emp.id === defaultEmployerId || !!settingDefault}
                       className={`w-full flex items-center justify-center gap-1.5 py-2 mb-2 rounded-md text-[11px] font-bold uppercase tracking-widest transition-colors ${
                         emp.id === defaultEmployerId
-                          ? 'bg-[#001b48]/10 text-[#001b48] cursor-default'
-                          : 'border border-[#001b48]/25 text-[#001b48] hover:bg-[#001b48]/[0.06]'
+                          ? 'bg-[#1d4ed8]/10 text-[#1d4ed8] cursor-default'
+                          : 'border border-[#1d4ed8]/25 text-[#1d4ed8] hover:bg-[#1d4ed8]/[0.06]'
                       } disabled:opacity-60`}
                     >
                       {settingDefault === emp.id ? (
                         <Loader2 className="h-3.5 w-3.5 animate-spin" />
                       ) : (
-                        <Star className={`h-3.5 w-3.5 ${emp.id === defaultEmployerId ? 'fill-[#001b48]' : ''}`} />
+                        <Star className={`h-3.5 w-3.5 ${emp.id === defaultEmployerId ? 'fill-[#1d4ed8]' : ''}`} />
                       )}
                       {emp.id === defaultEmployerId ? 'Default employee' : 'Set as default'}
                     </button>
@@ -401,7 +401,7 @@ export default function EmployersPage() {
                     <div className="flex gap-2">
                       <button
                         onClick={() => openEdit(emp)}
-                        className="flex-1 flex items-center justify-center gap-1.5 py-2 border border-[#02457a]/15 dark:border-gray-700 text-[#02457a] dark:text-[#d6e8ee] hover:bg-[#02457a]/[0.06] transition-colors text-[11px] font-bold uppercase tracking-widest rounded-md"
+                        className="flex-1 flex items-center justify-center gap-1.5 py-2 border border-[#2563eb]/15 dark:border-gray-700 text-[#2563eb] dark:text-[#dbeafe] hover:bg-[#2563eb]/[0.06] transition-colors text-[11px] font-bold uppercase tracking-widest rounded-md"
                       >
                         <Edit className="h-3.5 w-3.5" />
                         Edit
@@ -480,7 +480,7 @@ export default function EmployersPage() {
               type="checkbox"
               checked={form.isActive}
               onChange={(e) => setForm({ ...form, isActive: e.target.checked })}
-              className="h-4 w-4 accent-[#02457a]"
+              className="h-4 w-4 accent-[#2563eb]"
             />
             <span className="text-sm text-gray-700 dark:text-gray-300">Active employer</span>
           </label>
@@ -508,7 +508,7 @@ export default function EmployersPage() {
               return (
                 <div
                   key={sal.id}
-                  className="rounded-lg border border-[#02457a]/[0.08] dark:border-white/10 p-3.5 flex items-center justify-between gap-3"
+                  className="rounded-lg border border-[#2563eb]/[0.08] dark:border-white/10 p-3.5 flex items-center justify-between gap-3"
                 >
                   <div className="min-w-0">
                     <div className="flex items-center gap-2">
@@ -523,7 +523,7 @@ export default function EmployersPage() {
                     </div>
                   </div>
                   <div className="text-right flex-shrink-0">
-                    <span className="font-mono font-bold text-[#02457a] dark:text-[#d6e8ee]">
+                    <span className="font-mono font-bold text-[#2563eb] dark:text-[#dbeafe]">
                       {money(sal.salary)}
                     </span>
                     {sal.hourlyPayRate != null && (

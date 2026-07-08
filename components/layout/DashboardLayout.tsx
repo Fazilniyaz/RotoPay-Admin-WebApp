@@ -8,6 +8,7 @@ import { getSettings } from '@/lib/services/settings';
 import { useNotificationsSync } from '@/hooks/useNotificationsSync';
 import { useDataSync } from '@/hooks/useDataSync';
 import { OnboardingGate } from '@/components/onboarding/OnboardingGate';
+import { ProductTour } from '@/components/onboarding/ProductTour';
 
 interface DashboardLayoutProps {
   children: ReactNode;
@@ -48,6 +49,9 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
 
       {/* Blocks the app until the user has created their first (default) employee. */}
       <OnboardingGate />
+
+      {/* First-run, skippable walkthrough (employee → shift → wages → calendar → clock). */}
+      <ProductTour />
     </div>
   );
 }

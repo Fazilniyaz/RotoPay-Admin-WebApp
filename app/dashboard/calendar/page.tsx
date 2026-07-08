@@ -25,22 +25,22 @@ import { listPaidMonths, markMonthPaid, unmarkMonthPaid, PaidMonth } from '@/lib
 import { dataStore } from '@/store/dataStore';
 import { fmtTime } from '@/lib/format';
 
-const GRADIENT = 'linear-gradient(135deg, #02457a 0%, #001b48 100%)';
+const GRADIENT = 'linear-gradient(135deg, #2563eb 0%, #06b6d4 100%)';
 const primaryStyle = { background: GRADIENT };
 const cardCls =
-  'bg-white dark:bg-[#1f2937] rounded-[10px] border border-[rgba(2,69,122,0.08)] dark:border-[rgba(214,232,238,0.08)] shadow-[0_4px_6px_rgba(1,138,190,0.06),0_2px_4px_rgba(1,138,190,0.04)]';
+  'bg-white dark:bg-[#1f2937] rounded-[10px] border border-[rgba(37,99,235,0.08)] dark:border-[rgba(219,234,254,0.08)] shadow-[0_4px_6px_rgba(6,182,212,0.06),0_2px_4px_rgba(6,182,212,0.04)]';
 const inputCls =
-  'w-full bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-md px-4 py-3 focus:border-[#02457a] focus:ring-2 focus:ring-[#02457a]/10 outline-none transition-all text-sm';
+  'w-full bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-md px-4 py-3 focus:border-[#2563eb] focus:ring-2 focus:ring-[#2563eb]/10 outline-none transition-all text-sm';
 const labelCls = 'block text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2';
 const primaryBtn =
-  'inline-flex items-center justify-center gap-2 px-5 py-3 text-white text-[11px] font-bold uppercase tracking-widest rounded-lg shadow-[0_4px_14px_rgba(2,69,122,0.25)] hover:-translate-y-0.5 transition-all disabled:opacity-60';
+  'inline-flex items-center justify-center gap-2 px-5 py-3 text-white text-[11px] font-bold uppercase tracking-widest rounded-lg shadow-[0_4px_14px_rgba(37,99,235,0.25)] hover:-translate-y-0.5 transition-all disabled:opacity-60';
 const chipBtn =
-  'inline-flex items-center gap-2 px-4 py-2.5 text-[11px] font-bold uppercase tracking-widest rounded-lg border border-[#02457a]/20 text-[#02457a] dark:text-[#d6e8ee] hover:bg-[#02457a]/[0.06] transition-all';
+  'inline-flex items-center gap-2 px-4 py-2.5 text-[11px] font-bold uppercase tracking-widest rounded-lg border border-[#2563eb]/20 text-[#2563eb] dark:text-[#dbeafe] hover:bg-[#2563eb]/[0.06] transition-all';
 
 const WEEKDAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
 // Light, matte-finished label palette for events / memos.
-const PALETTE = ['#018ABE', '#D6E8EE', '#97CADB', '#02457A', '#001B48', '#97CADB'];
+const PALETTE = ['#06B6D4', '#DBEAFE', '#7DD3FC', '#2563EB', '#1D4ED8', '#7DD3FC'];
 
 const startOfDay = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate());
 const isSameDay = (a: Date, b: Date) =>
@@ -240,7 +240,7 @@ export default function CalendarPage() {
         {/* Header */}
         <div className="flex items-end justify-between gap-3 flex-wrap">
           <div>
-            <h1 className="text-3xl font-extrabold text-[#02457a]">Calendar</h1>
+            <h1 className="text-3xl font-extrabold text-[#2563eb]">Calendar</h1>
             <p className="text-sm text-gray-400 mt-0.5">
               {scopeEmployer ? (
                 <span className="inline-flex items-center gap-1">
@@ -267,27 +267,27 @@ export default function CalendarPage() {
         <div className={`${cardCls} p-3 sm:p-4 flex items-center justify-between`}>
           <button
             onClick={() => setViewDate(new Date(viewDate.getFullYear(), viewDate.getMonth() - 1, 1))}
-            className="w-9 h-9 rounded-md flex items-center justify-center text-[#02457a] hover:bg-[#02457a]/[0.06] transition-colors"
+            className="w-9 h-9 rounded-md flex items-center justify-center text-[#2563eb] hover:bg-[#2563eb]/[0.06] transition-colors"
           >
             <ChevronLeft className="h-5 w-5" />
           </button>
           <div className="flex items-center gap-3 flex-wrap justify-center">
             <h2 className="font-bold text-lg text-[#1b1c1c] dark:text-white">{monthLabel}</h2>
             {currentMonthPaid && (
-              <span className="inline-flex items-center gap-1 text-[9px] font-bold uppercase tracking-widest text-[#001b48] bg-[#001b48]/10 rounded-full px-2 py-0.5">
+              <span className="inline-flex items-center gap-1 text-[9px] font-bold uppercase tracking-widest text-[#1d4ed8] bg-[#1d4ed8]/10 rounded-full px-2 py-0.5">
                 <Check className="h-3 w-3" /> Paid
               </span>
             )}
             <button
               onClick={() => setViewDate(new Date())}
-              className="text-[10px] font-bold uppercase tracking-widest text-[#02457a] border border-[#02457a]/20 rounded-md px-2.5 py-1 hover:bg-[#02457a]/[0.06] transition-colors"
+              className="text-[10px] font-bold uppercase tracking-widest text-[#2563eb] border border-[#2563eb]/20 rounded-md px-2.5 py-1 hover:bg-[#2563eb]/[0.06] transition-colors"
             >
               Today
             </button>
           </div>
           <button
             onClick={() => setViewDate(new Date(viewDate.getFullYear(), viewDate.getMonth() + 1, 1))}
-            className="w-9 h-9 rounded-md flex items-center justify-center text-[#02457a] hover:bg-[#02457a]/[0.06] transition-colors"
+            className="w-9 h-9 rounded-md flex items-center justify-center text-[#2563eb] hover:bg-[#2563eb]/[0.06] transition-colors"
           >
             <ChevronRight className="h-5 w-5" />
           </button>
@@ -317,23 +317,23 @@ export default function CalendarPage() {
                 const de = dayEntries(d);
                 // Highlight the WHOLE cell for today / the opened day.
                 const cellState = isToday
-                  ? 'bg-[#02457a]/[0.08] dark:bg-[#02457a]/20 border-[#02457a] dark:border-[#018abe] ring-1 ring-inset ring-[#02457a]/40'
+                  ? 'bg-[#2563eb]/[0.08] dark:bg-[#2563eb]/20 border-[#2563eb] dark:border-[#06b6d4] ring-1 ring-inset ring-[#2563eb]/40'
                   : isOpen
-                  ? 'bg-[#001b48]/[0.08] dark:bg-[#001b48]/20 border-[#001b48] ring-1 ring-inset ring-[#001b48]/40'
+                  ? 'bg-[#1d4ed8]/[0.08] dark:bg-[#1d4ed8]/20 border-[#1d4ed8] ring-1 ring-inset ring-[#1d4ed8]/40'
                   : inMonth
-                  ? 'bg-white dark:bg-[#1f2937] border-[#02457a]/[0.06] dark:border-white/5'
+                  ? 'bg-white dark:bg-[#1f2937] border-[#2563eb]/[0.06] dark:border-white/5'
                   : 'bg-gray-50/60 dark:bg-white/[0.02] border-transparent';
                 return (
                   <div
                     key={i}
                     onClick={() => setDayPopup(d)}
-                    className={`group relative min-h-[78px] sm:min-h-[108px] rounded-md border p-1 sm:p-1.5 transition-colors cursor-pointer hover:border-[#02457a]/25 ${cellState}`}
+                    className={`group relative min-h-[78px] sm:min-h-[108px] rounded-md border p-1 sm:p-1.5 transition-colors cursor-pointer hover:border-[#2563eb]/25 ${cellState}`}
                   >
                     <div className="flex items-center justify-between">
                       <span
                         className={`text-[11px] sm:text-xs font-bold w-6 h-6 flex items-center justify-center ${
                           isToday
-                            ? 'text-[#02457a] dark:text-[#d6e8ee]'
+                            ? 'text-[#2563eb] dark:text-[#dbeafe]'
                             : inMonth
                             ? 'text-[#1b1c1c] dark:text-gray-200'
                             : 'text-gray-300 dark:text-gray-600'
@@ -347,7 +347,7 @@ export default function CalendarPage() {
                           setDayPopup(d);
                         }}
                         aria-label="Open day"
-                        className="w-5 h-5 rounded-md flex items-center justify-center text-[#02457a] bg-[#02457a]/[0.08] hover:bg-[#02457a]/15 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity"
+                        className="w-5 h-5 rounded-md flex items-center justify-center text-[#2563eb] bg-[#2563eb]/[0.08] hover:bg-[#2563eb]/15 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity"
                       >
                         <Plus className="h-3.5 w-3.5" />
                       </button>
@@ -464,7 +464,7 @@ export default function CalendarPage() {
                     return (
                       <div
                         key={s.id}
-                        className="flex items-center justify-between gap-2 rounded-md border border-[#02457a]/[0.08] dark:border-white/10 p-3"
+                        className="flex items-center justify-between gap-2 rounded-md border border-[#2563eb]/[0.08] dark:border-white/10 p-3"
                       >
                         <div className="min-w-0 flex items-center gap-2.5">
                           <span
@@ -484,7 +484,7 @@ export default function CalendarPage() {
                         <button
                           disabled={assigned || busy}
                           onClick={() => assignShift(s)}
-                          className="text-[10px] font-bold uppercase tracking-widest text-[#02457a] border border-[#02457a]/20 rounded-md px-2.5 py-1.5 hover:bg-[#02457a]/[0.06] transition-colors disabled:opacity-50 flex-shrink-0"
+                          className="text-[10px] font-bold uppercase tracking-widest text-[#2563eb] border border-[#2563eb]/20 rounded-md px-2.5 py-1.5 hover:bg-[#2563eb]/[0.06] transition-colors disabled:opacity-50 flex-shrink-0"
                         >
                           {assigned ? 'Assigned' : 'Assign shift'}
                         </button>
@@ -504,7 +504,7 @@ export default function CalendarPage() {
                       setAddKind('event');
                       setAddColor(PALETTE[3]);
                     }}
-                    className="flex-1 inline-flex items-center justify-center gap-1.5 py-2.5 rounded-md border border-[#02457a]/20 text-[#02457a] dark:text-[#d6e8ee] text-[11px] font-bold uppercase tracking-widest hover:bg-[#02457a]/[0.06] transition-colors"
+                    className="flex-1 inline-flex items-center justify-center gap-1.5 py-2.5 rounded-md border border-[#2563eb]/20 text-[#2563eb] dark:text-[#dbeafe] text-[11px] font-bold uppercase tracking-widest hover:bg-[#2563eb]/[0.06] transition-colors"
                   >
                     <CalendarDays className="h-4 w-4" /> Add event
                   </button>
@@ -513,7 +513,7 @@ export default function CalendarPage() {
                       setAddKind('memo');
                       setAddColor(PALETTE[2]);
                     }}
-                    className="flex-1 inline-flex items-center justify-center gap-1.5 py-2.5 rounded-md border border-[#02457a]/20 text-[#02457a] dark:text-[#d6e8ee] text-[11px] font-bold uppercase tracking-widest hover:bg-[#02457a]/[0.06] transition-colors"
+                    className="flex-1 inline-flex items-center justify-center gap-1.5 py-2.5 rounded-md border border-[#2563eb]/20 text-[#2563eb] dark:text-[#dbeafe] text-[11px] font-bold uppercase tracking-widest hover:bg-[#2563eb]/[0.06] transition-colors"
                   >
                     <StickyNote className="h-4 w-4" /> Add memo
                   </button>
@@ -581,17 +581,17 @@ export default function CalendarPage() {
                 setEmpOpen(false);
               }}
               className={`w-full flex items-center gap-3 rounded-md border p-3 text-left transition-colors ${
-                scopeId === emp.id ? 'border-[#02457a] bg-[#02457a]/[0.04]' : 'border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800'
+                scopeId === emp.id ? 'border-[#2563eb] bg-[#2563eb]/[0.04]' : 'border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800'
               }`}
             >
-              <div className="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0 bg-[#02457a]/10 text-[#02457a] font-bold text-sm">
+              <div className="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0 bg-[#2563eb]/10 text-[#2563eb] font-bold text-sm">
                 {emp.employerName.slice(0, 1).toUpperCase()}
               </div>
               <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-1.5">
                   <p className="font-semibold text-sm text-[#1b1c1c] dark:text-white truncate">{emp.employerName}</p>
                   {emp.id === defaultEmployerId && (
-                    <span className="text-[8px] font-bold uppercase tracking-widest text-[#001b48] bg-[#001b48]/10 rounded-full px-1.5 py-0.5 flex-shrink-0">
+                    <span className="text-[8px] font-bold uppercase tracking-widest text-[#1d4ed8] bg-[#1d4ed8]/10 rounded-full px-1.5 py-0.5 flex-shrink-0">
                       Default
                     </span>
                   )}
@@ -626,8 +626,8 @@ export default function CalendarPage() {
         <div className="space-y-5">
           <p className="text-xs text-gray-400">
             Marking a month paid records the total wages of the shifts you assigned to that month and
-            updates the <span className="font-semibold text-[#02457a]">This Month Pay</span> and
-            <span className="font-semibold text-[#02457a]"> Total Pay</span> figures.
+            updates the <span className="font-semibold text-[#2563eb]">This Month Pay</span> and
+            <span className="font-semibold text-[#2563eb]"> Total Pay</span> figures.
           </p>
           <div className="grid grid-cols-2 gap-4">
             <div>
@@ -655,7 +655,7 @@ export default function CalendarPage() {
               </p>
               <div className="space-y-2 max-h-40 overflow-y-auto">
                 {paidMonths.map((p) => (
-                  <div key={p.id} className="flex items-center justify-between rounded-md border border-[#001b48]/20 bg-[#001b48]/[0.04] p-2.5">
+                  <div key={p.id} className="flex items-center justify-between rounded-md border border-[#1d4ed8]/20 bg-[#1d4ed8]/[0.04] p-2.5">
                     <span className="text-sm text-[#1b1c1c] dark:text-white">
                       {MONTHS[p.month - 1]} {p.year}
                     </span>

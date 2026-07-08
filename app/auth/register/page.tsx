@@ -33,10 +33,10 @@ const styles = `
 
   /* ── Design tokens ── */
   :root {
-    --rp-primary:           #02457a;
-    --rp-primary-dim:       #d6e8ee;
-    --rp-secondary:         #001b48;
-    --rp-tertiary:          #001b48;
+    --rp-primary:           #2563eb;
+    --rp-primary-dim:       #dbeafe;
+    --rp-secondary:         #1d4ed8;
+    --rp-tertiary:          #1d4ed8;
     --rp-error:             #ba1a1a;
     --rp-surface:           #fbf9f8;
     --rp-surface-container: #efeded;
@@ -48,7 +48,7 @@ const styles = `
     --rp-on-surface-var:    #404752;
     --rp-outline:           #707783;
     --rp-outline-var:       #c0c7d4;
-    --rp-gradient:          linear-gradient(135deg, #02457a 0%, #001b48 100%);
+    --rp-gradient:          linear-gradient(135deg, #2563eb 0%, #06b6d4 100%);
   }
 
   .dark {
@@ -62,9 +62,9 @@ const styles = `
     --rp-on-surface-var:    #c4c6d0;
     --rp-outline:           #8d9199;
     --rp-outline-var:       #44474f;
-    --rp-primary:           #d6e8ee;
-    --rp-secondary:         #97cadb;
-    --rp-tertiary:          #97cadb;
+    --rp-primary:           #dbeafe;
+    --rp-secondary:         #7dd3fc;
+    --rp-tertiary:          #7dd3fc;
   }
 
   /* ── Root ── */
@@ -276,7 +276,7 @@ const styles = `
   }
 
   .rp-resend-btn:hover {
-    background: rgba(0,27,72,0.08);
+    background: rgba(29,78,216,0.08);
   }
 
   /* ── Form inner ── */
@@ -312,12 +312,12 @@ const styles = `
     line-height: 1;
   }
   .rp-banner-logo .rp-wordmark { color: #fff; }
-  .rp-wm-rota { color: #02457a; }
-  .rp-wm-pay  { color: #018abe; }
+  .rp-wm-rota { color: #2563eb; }
+  .rp-wm-pay  { color: #06b6d4; }
   .rp-mobile-logo .rp-wordmark { font-size: 30px; }
   /* Lift the brand colours on the dark form background so they don't merge. */
-  .dark .rp-mobile-logo .rp-wm-rota { color: #97cadb; }
-  .dark .rp-mobile-logo .rp-wm-pay  { color: #97cadb; }
+  .dark .rp-mobile-logo .rp-wm-rota { color: #7dd3fc; }
+  .dark .rp-mobile-logo .rp-wm-pay  { color: #7dd3fc; }
 
   .rp-mobile-logo-icon {
     width: 40px;
@@ -402,11 +402,11 @@ const styles = `
 
   .rp-input-wrap input:focus {
     border-color: var(--rp-primary);
-    box-shadow: 0 0 0 3px rgba(2,69,122,0.12);
+    box-shadow: 0 0 0 3px rgba(37,99,235,0.12);
   }
 
   .dark .rp-input-wrap input:focus {
-    box-shadow: 0 0 0 3px rgba(214,232,238,0.15);
+    box-shadow: 0 0 0 3px rgba(219,234,254,0.15);
   }
 
   .rp-input-wrap input::placeholder {
@@ -527,7 +527,7 @@ const styles = `
     align-items: center;
     justify-content: center;
     gap: 8px;
-    box-shadow: 0 4px 14px rgba(2,69,122,0.25);
+    box-shadow: 0 4px 14px rgba(37,99,235,0.25);
     transition: transform 0.15s, box-shadow 0.15s;
     margin-bottom: 16px;
     text-decoration: none;
@@ -535,7 +535,7 @@ const styles = `
 
   .rp-submit-btn:hover {
     transform: translateY(-1px);
-    box-shadow: 0 6px 20px rgba(2,69,122,0.3);
+    box-shadow: 0 6px 20px rgba(37,99,235,0.3);
   }
 
   .rp-submit-btn:active {
@@ -636,7 +636,7 @@ const styles = `
     width: 64px;
     height: 64px;
     border-radius: 50%;
-    background: rgba(0,27,72,0.1);
+    background: rgba(29,78,216,0.1);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -645,7 +645,7 @@ const styles = `
   }
 
   .dark .rp-success-icon {
-    background: rgba(151,202,219,0.12);
+    background: rgba(125,211,252,0.12);
     color: var(--rp-secondary);
   }
 

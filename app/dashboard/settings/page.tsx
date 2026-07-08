@@ -7,7 +7,8 @@ import { DashboardLayout } from '@/components/layout/DashboardLayout';
 import { ConfirmDialog } from '@/components/ui/modal';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { useAuth } from '@/hooks/useAuth';
-import { User, Globe, Loader2, LogOut, Mail, Check, Camera, Trash2, Timer, ArrowRight, AlertTriangle } from 'lucide-react';
+import { User, Globe, Loader2, LogOut, Mail, Check, Camera, Trash2, Timer, ArrowRight, AlertTriangle, Sparkles } from 'lucide-react';
+import { restartProductTour } from '@/components/onboarding/ProductTour';
 import {
   getSettings,
   updateSettings,
@@ -30,13 +31,13 @@ const fileToDataUrl = (file: File) =>
     reader.readAsDataURL(file);
   });
 
-const GRADIENT = 'linear-gradient(135deg, #02457a 0%, #001b48 100%)';
+const GRADIENT = 'linear-gradient(135deg, #2563eb 0%, #06b6d4 100%)';
 const primaryStyle = { background: GRADIENT };
 const cardCls =
-  'bg-white dark:bg-[#1f2937] rounded-[10px] border border-[rgba(2,69,122,0.08)] dark:border-[rgba(214,232,238,0.08)] shadow-[0_4px_6px_rgba(1,138,190,0.06),0_2px_4px_rgba(1,138,190,0.04)]';
+  'bg-white dark:bg-[#1f2937] rounded-[10px] border border-[rgba(37,99,235,0.08)] dark:border-[rgba(219,234,254,0.08)] shadow-[0_4px_6px_rgba(6,182,212,0.06),0_2px_4px_rgba(6,182,212,0.04)]';
 const labelCls = 'block text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2';
 const inputCls =
-  'w-full bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-md px-4 py-3 focus:border-[#02457a] focus:ring-2 focus:ring-[#02457a]/10 outline-none transition-all text-sm';
+  'w-full bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-md px-4 py-3 focus:border-[#2563eb] focus:ring-2 focus:ring-[#2563eb]/10 outline-none transition-all text-sm';
 
 const DATE_FORMATS: DateFormat[] = ['DD/MM/YYYY', 'MM/DD/YYYY', 'YYYY-MM-DD'];
 const TIME_FORMATS: TimeFormat[] = ['24h', '12h'];
@@ -274,7 +275,7 @@ export default function SettingsPage() {
     <DashboardLayout>
       <div className="space-y-6 max-w-3xl">
         <div>
-          <h1 className="text-3xl font-extrabold text-[#02457a]">Settings</h1>
+          <h1 className="text-3xl font-extrabold text-[#2563eb]">Settings</h1>
           <p className="text-sm text-gray-400 mt-0.5">Your profile and global preferences</p>
         </div>
 
@@ -315,7 +316,7 @@ export default function SettingsPage() {
                     <button
                       type="button"
                       onClick={() => fileInputRef.current?.click()}
-                      className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-[11px] font-bold uppercase tracking-widest text-[#02457a] border border-[#02457a]/20 hover:bg-[#02457a]/[0.06] transition-colors"
+                      className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-[11px] font-bold uppercase tracking-widest text-[#2563eb] border border-[#2563eb]/20 hover:bg-[#2563eb]/[0.06] transition-colors"
                     >
                       <Camera className="h-3.5 w-3.5" />
                       {currentPhoto ? 'Change photo' : 'Upload photo'}
@@ -466,9 +467,9 @@ export default function SettingsPage() {
               </div>
 
               {/* Currency comparison preview (global → native, live rate) */}
-              <div className="mt-5 rounded-md bg-[#02457a]/[0.04] dark:bg-white/5 border border-[#02457a]/[0.06] dark:border-white/5 p-4">
+              <div className="mt-5 rounded-md bg-[#2563eb]/[0.04] dark:bg-white/5 border border-[#2563eb]/[0.06] dark:border-white/5 p-4">
                 <div className="flex items-center gap-2 mb-3">
-                  <Timer className="h-3.5 w-3.5 text-[#02457a] dark:text-[#d6e8ee]" />
+                  <Timer className="h-3.5 w-3.5 text-[#2563eb] dark:text-[#dbeafe]" />
                   <p className="text-[10px] font-bold uppercase tracking-widest text-[#707783] dark:text-gray-400">
                     Currency Comparison
                   </p>
@@ -488,7 +489,7 @@ export default function SettingsPage() {
                     <div className="flex items-center gap-2 font-mono text-sm text-[#1b1c1c] dark:text-white">
                       <span className="font-semibold">1 {currency}</span>
                       <ArrowRight className="h-4 w-4 text-gray-400" />
-                      <span className="font-semibold text-[#02457a] dark:text-[#d6e8ee]">
+                      <span className="font-semibold text-[#2563eb] dark:text-[#dbeafe]">
                         {rate.toFixed(2)} {nativeCurrency}
                       </span>
                     </div>
@@ -502,7 +503,7 @@ export default function SettingsPage() {
               </div>
 
               {/* Live preview */}
-              <div className="mt-5 rounded-md bg-[#02457a]/[0.04] dark:bg-white/5 border border-[#02457a]/[0.06] dark:border-white/5 p-4">
+              <div className="mt-5 rounded-md bg-[#2563eb]/[0.04] dark:bg-white/5 border border-[#2563eb]/[0.06] dark:border-white/5 p-4">
                 <p className="text-[10px] font-bold uppercase tracking-widest text-[#707783] dark:text-gray-400 mb-2">
                   Preview
                 </p>
@@ -535,11 +536,33 @@ export default function SettingsPage() {
               <button
                 onClick={save}
                 disabled={saving || !dirty}
-                className="inline-flex items-center justify-center gap-2 px-8 py-3 text-white text-[11px] font-bold uppercase tracking-widest rounded-lg shadow-[0_4px_14px_rgba(2,69,122,0.25)] hover:-translate-y-0.5 transition-all disabled:opacity-60 disabled:hover:translate-y-0 disabled:cursor-not-allowed"
+                className="inline-flex items-center justify-center gap-2 px-8 py-3 text-white text-[11px] font-bold uppercase tracking-widest rounded-lg shadow-[0_4px_14px_rgba(37,99,235,0.25)] hover:-translate-y-0.5 transition-all disabled:opacity-60 disabled:hover:translate-y-0 disabled:cursor-not-allowed"
                 style={primaryStyle}
               >
                 <Check className="h-4 w-4" />
                 {saving ? 'Saving…' : 'Save Changes'}
+              </button>
+            </div>
+
+            {/* Help — replay the first-run product tour */}
+            <div className="rounded-[10px] border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800/40 p-5 sm:p-6">
+              <div className="flex items-center gap-2 mb-2">
+                <div className="w-9 h-9 rounded-lg flex items-center justify-center" style={primaryStyle}>
+                  <Sparkles className="h-4 w-4 text-white" />
+                </div>
+                <h2 className="font-bold text-[#1b1c1c] dark:text-white">Help &amp; Walkthrough</h2>
+              </div>
+              <p className="text-sm text-gray-500 dark:text-gray-400 mb-4 max-w-xl">
+                New here or need a refresher? Replay the quick tour that shows how to
+                create an employee, a shift and wages.
+              </p>
+              <button
+                onClick={restartProductTour}
+                className="inline-flex items-center justify-center gap-2 px-5 py-3 rounded-lg text-[11px] font-bold uppercase tracking-widest text-white hover:-translate-y-0.5 transition-all shadow-[0_4px_14px_rgba(37,99,235,0.25)]"
+                style={primaryStyle}
+              >
+                <Sparkles className="h-4 w-4" />
+                Replay Walkthrough
               </button>
             </div>
 

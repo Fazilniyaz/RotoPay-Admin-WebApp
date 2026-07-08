@@ -69,17 +69,17 @@ export function DefaultEmployeeSwitcher({ collapsed }: { collapsed: boolean }) {
         .rp-emp-card {
           display: flex; align-items: center; gap: 9px; width: 100%;
           padding: 6px 9px; border-radius: 10px;
-          background: linear-gradient(135deg, rgba(2,69,122,0.07), rgba(0,27,72,0.07));
-          border: 1px solid rgba(2,69,122,0.14);
+          background: linear-gradient(135deg, rgba(37,99,235,0.07), rgba(29,78,216,0.07));
+          border: 1px solid rgba(37,99,235,0.14);
           cursor: pointer; text-align: left; transition: background 0.15s, border-color 0.15s;
           font-family: 'Montserrat', sans-serif; overflow: hidden;
         }
-        .rp-emp-card:hover { background: rgba(2,69,122,0.12); border-color: rgba(2,69,122,0.22); }
-        .dark .rp-emp-card { background: rgba(214,232,238,0.07); border-color: rgba(214,232,238,0.12); }
-        .dark .rp-emp-card:hover { background: rgba(214,232,238,0.12); }
+        .rp-emp-card:hover { background: rgba(37,99,235,0.12); border-color: rgba(37,99,235,0.22); }
+        .dark .rp-emp-card { background: rgba(219,234,254,0.07); border-color: rgba(219,234,254,0.12); }
+        .dark .rp-emp-card:hover { background: rgba(219,234,254,0.12); }
         .rp-emp-avatar {
           width: 30px; height: 30px; border-radius: 8px; flex-shrink: 0;
-          background: linear-gradient(135deg, #02457a, #001b48);
+          background: linear-gradient(135deg, #2563eb, #06b6d4);
           color: #fff; font-size: 11px; font-weight: 700;
           display: flex; align-items: center; justify-content: center;
         }
@@ -127,14 +127,14 @@ export function DefaultEmployeeSwitcher({ collapsed }: { collapsed: boolean }) {
                 const isCurrent = emp.id === defaultEmployerId;
                 return (
                   <DropdownMenuItem key={emp.id} onClick={() => pick(emp.id)} className="gap-2">
-                    <span className="flex h-6 w-6 items-center justify-center rounded-md bg-[#02457a]/10 text-[10px] font-bold text-[#02457a] dark:text-[#d6e8ee]">
+                    <span className="flex h-6 w-6 items-center justify-center rounded-md bg-[#2563eb]/10 text-[10px] font-bold text-[#2563eb] dark:text-[#dbeafe]">
                       {initialsOf(emp.employerName)}
                     </span>
                     <span className="flex-1 min-w-0">
                       <span className="block truncate text-sm font-semibold">{emp.employerName}</span>
                       <span className="block truncate text-[11px] text-muted-foreground">{emp.store}</span>
                     </span>
-                    {isCurrent && <Check className="h-4 w-4 text-[#001b48]" />}
+                    {isCurrent && <Check className="h-4 w-4 text-[#1d4ed8]" />}
                   </DropdownMenuItem>
                 );
               })}

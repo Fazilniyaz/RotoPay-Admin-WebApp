@@ -21,11 +21,11 @@ import { resolveLocationLabel } from '@/lib/geolocation';
 // onboarding with the "X" instead of filling the form.
 const AUTO_ADDED_NOTE = 'Automatically added employee';
 
-const GRADIENT = 'linear-gradient(135deg, #02457a 0%, #001b48 100%)';
+const GRADIENT = 'linear-gradient(135deg, #2563eb 0%, #06b6d4 100%)';
 const primaryStyle = { background: GRADIENT };
 const labelCls = 'block text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2';
 const inputCls =
-  'w-full bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-md px-4 py-3 focus:border-[#02457a] focus:ring-2 focus:ring-[#02457a]/10 outline-none transition-all text-sm';
+  'w-full bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-md px-4 py-3 focus:border-[#2563eb] focus:ring-2 focus:ring-[#2563eb]/10 outline-none transition-all text-sm';
 
 const emptyForm: EmployerInput = { employerName: '', store: '', notes: '', isActive: true };
 
@@ -165,7 +165,7 @@ export function OnboardingGate() {
           <button
             onClick={submit}
             disabled={busy}
-            className="w-full inline-flex items-center justify-center gap-2 px-5 py-3.5 text-white text-[12px] font-bold uppercase tracking-widest rounded-lg shadow-[0_4px_14px_rgba(2,69,122,0.25)] hover:-translate-y-0.5 transition-all disabled:opacity-60 disabled:hover:translate-y-0"
+            className="w-full inline-flex items-center justify-center gap-2 px-5 py-3.5 text-white text-[12px] font-bold uppercase tracking-widest rounded-lg shadow-[0_4px_14px_rgba(37,99,235,0.25)] hover:-translate-y-0.5 transition-all disabled:opacity-60 disabled:hover:translate-y-0"
             style={primaryStyle}
           >
             {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
@@ -176,7 +176,7 @@ export function OnboardingGate() {
           <button
             onClick={dismissWithAutoEmployee}
             disabled={busy}
-            className="w-full text-center text-[12px] font-semibold text-gray-500 hover:text-[#02457a] transition-colors disabled:opacity-60"
+            className="w-full text-center text-[12px] font-semibold text-gray-500 hover:text-[#2563eb] transition-colors disabled:opacity-60"
           >
             {autoAdding ? 'Setting you up…' : 'Skip — set me up automatically'}
           </button>
