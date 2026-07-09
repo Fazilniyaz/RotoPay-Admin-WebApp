@@ -23,13 +23,21 @@ import { NextRequest, NextResponse } from 'next/server';
 // production is left exactly as it was (which is verified working live).
 const isDev = process.env.NODE_ENV !== 'production';
 
+// Explicit allowlist of the ONLY external hosts we load scripts from — Google
+// Identity Services + reCAPTCHA, and Vercel Analytics. Replaces the previous
+// blanket `https:` so an injected <script src="https://evil.com"> is blocked by
+// the browser (the app has no dangerouslySetInnerHTML, so this meaningfully
+// shrinks the XSS surface). 'unsafe-inline' stays because Next.js's static output
+// ships un-nonced inline bootstrap scripts; removing it needs forced dynamic
+// rendering (separate task).
+const SCRIPT_HOSTS =
+  'https://www.google.com https://www.gstatic.com https://accounts.google.com https://apis.google.com https://va.vercel-scripts.com';
+
 export function middleware(_request: NextRequest) {
   const csp = [
     `default-src 'self'`,
-    // Next.js ships inline bootstrap scripts (no reliable nonce on static pages),
-    // so inline is allowed; https: covers Google Identity Services + reCAPTCHA.
-    `script-src 'self' 'unsafe-inline' 'unsafe-eval' https:`,
-    `script-src-elem 'self' 'unsafe-inline' https:`,
+    `script-src 'self' 'unsafe-inline' 'unsafe-eval' ${SCRIPT_HOSTS}`,
+    `script-src-elem 'self' 'unsafe-inline' ${SCRIPT_HOSTS}`,
     // Inline styles / <style> blocks + Google Fonts stylesheet.
     `style-src 'self' 'unsafe-inline' https://fonts.googleapis.com`,
     `style-src-elem 'self' 'unsafe-inline' https://fonts.googleapis.com`,
